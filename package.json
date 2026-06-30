@@ -1,12 +1,20 @@
 {
   "name": "ensemble",
-  "private": true,
   "version": "0.0.1",
+  "private": true,
   "description": "A terminal-of-terminals and agent orchestrator",
   "scripts": {
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "stop": "cd ui && ./node_modules/.bin/astro dev stop",
+    "lint": "vp lint .",
+    "fmt": "vp fmt .",
+    "check": "vp check",
+    "test": "vp test",
     "tauri": "tauri"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2"
+    "@tauri-apps/cli": "^2",
+    "vite-plus": "^0.2.1"
   }
 }

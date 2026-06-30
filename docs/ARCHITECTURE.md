@@ -8,16 +8,16 @@ into a clean skeleton.
 ## Why Tauri (Rust), not Electron
 
 Solo's bet, which we copy: the backend is **Rust** behind **Tauri v2** (the
-`tao` windowing + `wry` WebView crates). The UI renders in the *system*
+`tao` windowing + `wry` WebView crates). The UI renders in the _system_
 WebView (WKWebView on macOS), so there is no bundled Chromium. The terminal
 layer is native rather than `node-pty` + a JS terminal.
 
-| Concern     | Ensemble / Solo (Tauri)      | XVE / Electron       |
-|-------------|------------------------------|----------------------|
-| UI runtime  | system WebView (no Chromium) | bundled Chromium     |
-| Backend     | Rust                         | Node / TypeScript    |
-| Terminal    | native PTY                   | node-pty + xterm.js  |
-| Bundle size | small                        | large                |
+| Concern     | Ensemble / Solo (Tauri)      | XVE / Electron      |
+| ----------- | ---------------------------- | ------------------- |
+| UI runtime  | system WebView (no Chromium) | bundled Chromium    |
+| Backend     | Rust                         | Node / TypeScript   |
+| Terminal    | native PTY                   | node-pty + xterm.js |
+| Bundle size | small                        | large               |
 
 ## Object model
 
@@ -35,7 +35,7 @@ The backend exposes a small set of commands the UI invokes. Names mirror Solo's
 MCP verbs so the mental model transfers:
 
 | Command              | Purpose                                | State |
-|----------------------|----------------------------------------|-------|
+| -------------------- | -------------------------------------- | ----- |
 | `list_projects`      | enumerate projects                     | stub  |
 | `list_processes`     | processes in a project                 | stub  |
 | `spawn_process`      | start a managed process (PTY)          | todo  |

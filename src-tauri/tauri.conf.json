@@ -5,20 +5,24 @@
   "identifier": "dev.ensemble.app",
   "build": {
     "frontendDist": "../ui/dist",
-    "devUrl": "http://localhost:5173",
-    "beforeDevCommand": "npm --prefix ui run dev",
-    "beforeBuildCommand": "npm --prefix ui run build"
+    "devUrl": "http://localhost:4321",
+    "beforeDevCommand": "cd ui && ./node_modules/.bin/astro dev --background --port 4321",
+    "beforeBuildCommand": "cd ui && ./node_modules/.bin/astro build"
   },
   "app": {
     "withGlobalTauri": true,
-    "windows": [
-      { "label": "main", "title": "Ensemble", "width": 1100, "height": 720 }
-    ],
+    "windows": [{ "label": "main", "title": "Ensemble", "width": 1100, "height": 720 }],
     "security": { "csp": null }
   },
   "bundle": {
     "active": true,
     "targets": "all",
-    "icon": []
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
   }
 }

@@ -1,0 +1,5 @@
+#!/bin/sh
+# Launch the Ensemble Tauri dev app directly.
+# Running it through vp/npm/pnpm "run" wrappers strands the dev server — those
+# wrappers don't hand the terminal to long-running children. A direct exec does.
+exec "$(cd "$(dirname "$0")" && pwd)/node_modules/.bin/tauri" dev "$@"

@@ -1,0 +1,25 @@
+# Git hooks for Ensemble. Run `lefthook install` once after cloning.
+# Frontend formatting/linting via Vite+ (vp); Rust via cargo.
+
+pre-commit:
+  parallel: true
+  jobs:
+    - name: format
+      glob: "*.{js,ts,jsx,tsx,astro,mjs,cjs,json,css,scss,md,html,yml,yaml}"
+      run: vp fmt {staged_files}
+      stage_fixed: true
+    - name: lint
+      glob: "*.{js,ts,jsx,tsx,astro,mjs,cjs}"
+      run: vp lint {staged_files}
+    - name: rustfmt
+      glob: "src-tauri/**/*.rs"
+      run: cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
+
+pre-push:
+  parallel: true
+  jobs:
+    - name: check
+      run: vp check
+    - name: clippy
+      root: "src-tauri/"
+      run: cargo clippy --all-targets -- -D warnings

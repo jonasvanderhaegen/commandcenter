@@ -1,18 +1,14 @@
 {
   "name": "ensemble-ui",
-  "private": true,
   "version": "0.0.1",
+  "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
+    "dev": "astro dev --port 4321",
+    "build": "astro build",
+    "preview": "astro preview --port 4321"
   },
   "dependencies": {
-    "@xterm/xterm": "^5.5.0"
-  },
-  "devDependencies": {
-    "typescript": "^5.6.0",
-    "vite": "^6.0.0"
+    "astro": "^7"
   }
 }

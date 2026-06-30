@@ -1,11 +1,19 @@
-# Rust / Tauri
+# Dependencies
+node_modules/
+
+# Build output
+ui/dist/
 /src-tauri/target/
 /src-tauri/gen/
 
-# Node
-node_modules/
-ui/dist/
+# Astro generated
+ui/.astro/
 
-# Misc
-.DS_Store
+# Vite+ local hooks dir (lefthook is the source of truth)
+.vite-hooks/
+
+# Logs
 *.log
+
+# OS
+.DS_Store

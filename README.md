@@ -25,12 +25,12 @@ project --+-- process   (a managed long-running shell / command)
 
 ## Stack
 
-| Layer        | Choice                                   |
-|--------------|------------------------------------------|
-| Shell/window | Tauri v2 (Rust)                          |
-| Backend      | Rust -- process supervision, PTYs        |
-| Frontend     | Vite + TypeScript, xterm.js terminals    |
-| Terminal     | native PTY (planned: `portable-pty`)     |
+| Layer        | Choice                                |
+| ------------ | ------------------------------------- |
+| Shell/window | Tauri v2 (Rust)                       |
+| Backend      | Rust -- process supervision, PTYs     |
+| Frontend     | Vite + TypeScript, xterm.js terminals |
+| Terminal     | native PTY (planned: `portable-pty`)  |
 
 The split mirrors [Solo](https://soloterm.com): a Rust/Tauri core with a
 WebView frontend, rather than an Electron + node-pty stack.
