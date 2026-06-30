@@ -6,7 +6,6 @@
 ---
 
 <div class="titlebar" data-tauri-drag-region>
-  <span class="titlebar__title" data-tauri-drag-region>Ensemble</span>
   <div class="titlebar__controls">
     <button type="button" class="titlebar__btn" data-tb="minimize" aria-label="Minimize">
       <svg viewBox="0 0 12 12" aria-hidden="true"><line x1="2.5" y1="6" x2="9.5" y2="6"></line></svg>
@@ -37,8 +36,7 @@
     z-index: 1000;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding: 0 0 0 1rem;
+    justify-content: center;
     background-color: #161616;
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     -webkit-user-select: none;
@@ -51,14 +49,6 @@
   }
   html.is-tauri .nav {
     top: var(--titlebar-h);
-  }
-
-  .titlebar__title {
-    font-size: 0.75rem;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-    color: rgba(255, 255, 255, 0.72);
-    pointer-events: none;
   }
 
   .titlebar__controls {
