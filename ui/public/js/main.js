@@ -32,7 +32,9 @@ barba.hooks.leave((data) => {
 });
 
 barba.hooks.afterLeave((data) => {
-  lenis.destroy();
+  // Lenis is persistent across transitions (created once in initLenis); with
+  // sync:true, destroying it here would race the incoming page's resetPage that
+  // just restarted it, leaving scroll dead until reload. Stop/start handles it.
   ScrollTrigger.getAll().forEach(t => t.kill());
   if (window.cleanupOnLeave) cleanupOnLeave();
 });
@@ -477,6 +479,10 @@ function initScriptsAfterEnter() {
 // —————— GLOBAL FUNCTIONS —————— //
 
 function initLenis() {
+  // Idempotent: one Lenis instance + one ticker callback for the page's life.
+  // Re-creating per navigation stacks gsap.ticker callbacks (scroll speeds up)
+  // and races the afterLeave teardown, so guard against repeat init.
+  if (lenis) return;
 
   lenis = new Lenis({
     lerp: 0.165,
