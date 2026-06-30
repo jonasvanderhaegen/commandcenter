@@ -1,0 +1,10 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import pageHtml from "../../markup/showcase-main.html?raw";
+---
+
+<BaseLayout title="Osmo Showcase - Osmo">
+  <main data-barba="container" data-barba-namespace="showcase" data-page-theme="light" class="main">
+    <Fragment set:html={pageHtml} />
+  </main>
+</BaseLayout>

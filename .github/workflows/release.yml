@@ -1,0 +1,109 @@
+name: Release
+
+permissions:
+  contents: write
+
+on:
+  workflow_dispatch: # dispatch on a vX.Y.Z git tag (single shared runner)
+
+concurrency:
+  group: release-ensemble-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+
+jobs:
+  preflight:
+    name: Preflight (disk guard)
+    runs-on: { group: builds, labels: [self-hosted, macOS, ARM64, light] }
+    timeout-minutes: 3
+    env: { MIN_FREE_GB: "20" }
+    steps:
+      - name: Abort if free disk below minimum
+        run: |
+          free_gb=$(df -g /System/Volumes/Data 2>/dev/null | tail -1 | awk '{print $4}')
+          echo "Free disk: ${free_gb} GB (min ${MIN_FREE_GB} GB)"
+          if [ "${free_gb:-0}" -lt "$MIN_FREE_GB" ]; then
+            echo "::error::Insufficient disk: ${free_gb}GB free < ${MIN_FREE_GB}GB. Aborting release — free space and re-run."
+            exit 1
+          fi
+
+  release:
+    name: build-bundle-publish
+    runs-on: { group: builds, labels: [self-hosted, macOS, ARM64, heavy] }
+    timeout-minutes: 120
+    needs: [preflight]
+    env:
+      SCCACHE_BUCKET: skylence-artifacts
+      SCCACHE_ENDPOINT: "https://0bfc528cccf1182a4c1b2e891492697c.r2.cloudflarestorage.com"
+      SCCACHE_REGION: auto
+      SCCACHE_S3_KEY_PREFIX: sccache
+      SCCACHE_BASEDIR: ${{ github.workspace }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+    steps:
+      - run: echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify tag commit is on main
+        env:
+          TAG: ${{ github.ref_name }}
+          REF_TYPE: ${{ github.ref_type }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$REF_TYPE" != "tag" ]; then
+            echo "::error::Release must be dispatched on a vX.Y.Z git tag; got ref type '$REF_TYPE'."
+            exit 1
+          fi
+          case "$TAG" in
+            v[0-9]*.[0-9]*.[0-9]*) ;;
+            *) echo "::error::Release tag must look like vX.Y.Z; got '$TAG'."; exit 1 ;;
+          esac
+          git fetch --force origin main --tags
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::Refusing release: tag commit $GITHUB_SHA is not reachable from origin/main."
+            exit 1
+          fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+
+      - name: Install frontend deps
+        working-directory: ui
+        run: npm ci
+
+      - name: Enable sccache if R2 cache reachable (else build uncached)
+        shell: bash
+        run: |
+          if ! command -v sccache >/dev/null 2>&1 || ! sccache --version | grep -q '0.16.0'; then
+            RUSTC_WRAPPER= cargo install --locked --force sccache@0.16.0
+          fi
+          sccache --stop-server 2>/dev/null || true
+          if sccache --start-server 2>/dev/null; then
+            echo "RUSTC_WRAPPER=sccache" >> "$GITHUB_ENV"
+          else
+            echo "sccache/R2 cache unreachable — building without cache"
+          fi
+
+      # Builds the Tauri app — runs beforeBuildCommand (astro build) for the
+      # frontend, compiles the Rust binary, bundles .app/.dmg, and attaches them
+      # to a draft GitHub Release. Add APPLE_* signing secrets to notarize.
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: "Ensemble ${{ github.ref_name }}"
+          releaseDraft: true
+          prerelease: false
+
+      - name: sccache stats
+        if: always()
+        run: sccache --show-stats >> "$GITHUB_STEP_SUMMARY" || true

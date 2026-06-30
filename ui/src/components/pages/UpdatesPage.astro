@@ -1,0 +1,10 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import pageHtml from "../../markup/updates-main.html?raw";
+---
+
+<BaseLayout title="Update Log - Osmo">
+  <main data-barba="container" data-barba-namespace="updates" data-page-theme="light" class="main">
+    <Fragment set:html={pageHtml} />
+  </main>
+</BaseLayout>

@@ -1,0 +1,10 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import pageHtml from "../../markup/icons-main.html?raw";
+---
+
+<BaseLayout title="Icon Library - Osmo">
+  <main data-barba="container" data-barba-namespace="product-icons" data-page-theme="dark" class="main">
+    <Fragment set:html={pageHtml} />
+  </main>
+</BaseLayout>

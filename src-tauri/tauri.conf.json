@@ -5,8 +5,8 @@
   "identifier": "dev.ensemble.app",
   "build": {
     "frontendDist": "../ui/dist",
-    "devUrl": "http://localhost:4321",
-    "beforeDevCommand": "cd ui && ./node_modules/.bin/astro dev --background --port 4321",
+    "devUrl": "http://localhost:1420",
+    "beforeDevCommand": "cd ui && ./node_modules/.bin/astro dev --background --host --port 1420",
     "beforeBuildCommand": "cd ui && ./node_modules/.bin/astro build"
   },
   "app": {

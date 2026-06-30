@@ -1,0 +1,10 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import pageHtml from "../../markup/community-main.html?raw";
+---
+
+<BaseLayout title="Community - Osmo">
+  <main data-barba="container" data-barba-namespace="product-community" data-page-theme="dark" class="main">
+    <Fragment set:html={pageHtml} />
+  </main>
+</BaseLayout>

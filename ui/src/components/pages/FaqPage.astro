@@ -1,0 +1,13 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import faqHtml from "../../markup/faq-main.html?raw";
+---
+
+<BaseLayout
+  title="Osmo - Frequently Asked Questions"
+  description="Answers to the most common questions about Osmo."
+>
+  <main data-barba="container" data-barba-namespace="faq" data-page-theme="light" class="main">
+    <Fragment set:html={faqHtml} />
+  </main>
+</BaseLayout>

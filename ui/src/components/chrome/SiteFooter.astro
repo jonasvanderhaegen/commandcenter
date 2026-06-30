@@ -1,0 +1,28 @@
+---
+// Osmo's footer, lifted out of the page <main> so it lives as shared chrome.
+// Wrapped in the parallax structure from apps/landing (footer-parallax): the
+// inner footer scrubs up and a dark overlay fades as it scrolls into view.
+import footerHtml from "../../markup/footer.html?raw";
+---
+
+<div data-footer-parallax class="footer-wrap">
+  <Fragment set:html={footerHtml} />
+  <div data-footer-parallax-dark class="footer-wrap__dark"></div>
+</div>
+
+<style is:global>
+  .footer-wrap {
+    position: relative;
+    overflow: hidden;
+  }
+  .footer-wrap__dark {
+    opacity: 0;
+    pointer-events: none;
+    background-color: #201d1d;
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+  }
+</style>
