@@ -1,0 +1,8 @@
+---
+// Osmo's global chrome: the page-transition overlay + primary navbar +
+// (hidden) resources sitemap. Markup is stored raw and injected verbatim so the
+// Astro compiler never has to parse the Webflow output. Classes preserved.
+import navHtml from "../../markup/nav.html?raw";
+---
+
+<Fragment set:html={navHtml} />

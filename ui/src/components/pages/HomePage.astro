@@ -1,0 +1,17 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import HomeHero from "./HomeHero.astro";
+import undernavHtml from "../../markup/home-undernav.html?raw";
+import restHtml from "../../markup/home-main.html?raw";
+---
+
+<BaseLayout
+  title="Osmo - Dev Toolkit Built to Flex"
+  description="Webflow & HTML resources, icons, easings and a page transition course."
+>
+  <main data-barba="container" data-barba-namespace="home" data-page-theme="light" class="main">
+    <Fragment set:html={undernavHtml} />
+    <HomeHero />
+    <Fragment set:html={restHtml} />
+  </main>
+</BaseLayout>

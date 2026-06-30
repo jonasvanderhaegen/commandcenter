@@ -1,0 +1,41 @@
+---
+import SiteNav from "../components/chrome/SiteNav.astro";
+import SiteFooter from "../components/chrome/SiteFooter.astro";
+
+type Props = {
+  title?: string;
+  description?: string;
+};
+
+const { title = "Osmo", description } = Astro.props;
+---
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    {description && <meta name="description" content={description} />}
+
+    <link href="/css/normalize.css" rel="stylesheet" />
+    <link href="/css/webflow.css" rel="stylesheet" />
+    <link href="/css/main.css" rel="stylesheet" />
+
+    <link href="/images/meta/favicon.png" rel="shortcut icon" type="image/x-icon" />
+    <link href="/images/meta/webclip.png" rel="apple-touch-icon" />
+  </head>
+
+  <body data-barba="wrapper" class="body">
+    <SiteNav />
+
+    <slot />
+
+    <SiteFooter />
+
+    <script>
+      import "../scripts/pixel-transition";
+      import "../scripts/nav";
+    </script>
+  </body>
+</html>
