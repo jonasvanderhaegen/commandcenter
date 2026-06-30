@@ -69,6 +69,7 @@ barba.init({
   transitions: [
     {
       name: 'self',
+      sync: true,
       async leave(data) {
         await runPageLeaveAnimation(data.current.container, data.next.container);
       },
@@ -78,6 +79,7 @@ barba.init({
     },
     {
       name: 'default',
+      sync: true,
       once(data) {
         initBasicFunctionsOnce();
         runPageOnceAnimation();
