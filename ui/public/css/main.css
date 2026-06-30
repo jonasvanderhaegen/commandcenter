@@ -391,6 +391,14 @@ html::-webkit-scrollbar {
   /* Each page container is its own stacking context so its z-indexed content
      can't escape above the incoming fixed container during the pixel wipe. */
   isolation: isolate;
+  /* Opaque, theme-matched background so the outgoing page can't show through
+     the incoming page's transparent areas during the pixel-wipe transition
+     (mirrors apps/landing's .page--light/.page--dark backgrounds). */
+  background-color: var(--color-neutral-200);
+}
+
+.main[data-page-theme="dark"] {
+  background-color: var(--color-dark);
 }
 
 .container {
