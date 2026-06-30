@@ -482,21 +482,36 @@ html::-webkit-scrollbar {
 }
 
 .transition {
-  z-index: 50;
-  background-color: var(--color-neutral-200);
-  justify-content: center;
-  align-items: center;
-  display: flex;
+  z-index: 100;
+  pointer-events: none;
   position: fixed;
-  inset: 0%;
+  inset: 0;
+  overflow: clip;
 }
 
-[data-transition-theme="dark"] {
-  background-color: var(--color-dark);
+.transition__panel {
+  opacity: 0;
+  flex-flow: row;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  position: absolute;
+  top: 0;
+  left: 0;
 }
 
-[data-transition-theme="light"] {
-  background-color: var(--color-neutral-200);
+.transition__col {
+  flex-flow: column;
+  justify-content: flex-start;
+  align-items: stretch;
+  width: 100%;
+  display: flex;
+}
+
+.transition__pixel {
+  aspect-ratio: 1;
+  background-color: #7948e9;
+  width: 100%;
 }
 
 :is(.wf-design-mode, .wf-editor) .transition {

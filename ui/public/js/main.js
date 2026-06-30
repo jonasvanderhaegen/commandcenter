@@ -44,6 +44,10 @@ barba.hooks.beforeEnter((data) => {
   initObserverHub();
   initLenis();
   initScriptsBeforeEnter();
+  // Pixel transition: overlay the incoming page on top of the current one so
+  // the clip-path wipe reveals it in the viewport.
+  gsap.set(data.next.container, { position: "fixed", top: 0, left: 0, right: 0 });
+  if (lenis && typeof lenis.stop === "function") lenis.stop();
 });
 
 barba.hooks.enter((data) => {
@@ -77,6 +81,9 @@ barba.init({
       once(data) {
         initBasicFunctionsOnce();
         runPageOnceAnimation();
+        // beforeEnter fires on `once` too and pins the container fixed; clear it
+        // so first load isn't pinned (mirrors apps/landing's once → resetPage).
+        resetPage(data.next.container);
       },
       async leave(data) {
         await runPageLeaveAnimation(data.current.container, data.next.container);
@@ -231,11 +238,6 @@ function runPageOnceAnimation() {
     lenis.scrollTo(0, { immediate: true });
   }, null, 0);
 
-  tl.set("main", {
-    height: "100svh",
-    overflow: "clip"
-  });
-
   tl.set(".nav", {
     autoAlpha: 1
   });
@@ -247,167 +249,187 @@ function runPageOnceAnimation() {
   }, "0.25");
 
   tl.call(function () {
-    runPageEnterAnimation();
+    lenis.resize();
+    lenis.start();
+    ScrollTrigger.refresh();
   }, null, 0.25);
 }
 
-function runPageLeaveAnimation(current, next) {
+// —————— PIXEL PAGE TRANSITION (ported verbatim from apps/landing) —————— //
+const pixelHorizontalAmount = 12;
+const transitionDuration = 1;
+const pixelFadeDuration = 0.2;
+const pixelOverlap = 0.3;
 
-  const underNavInner = current.querySelector(".under-nav-bar__inner")
+const rmMQ = window.matchMedia("(prefers-reduced-motion: reduce)");
+let reducedMotion = rmMQ.matches;
+rmMQ.addEventListener?.("change", (e) => (reducedMotion = e.matches));
 
-  const tl = gsap.timeline({
-    onStart: () => {
-      closeNavigation();
-    },
-    onComplete: () => {
-      current.remove();
+function pixelGrid(isPortrait) {
+  const panel = document.querySelector("[data-transition-panel]");
+  if (!panel) return;
+
+  const rect = panel.getBoundingClientRect();
+  panel.style.flexDirection = isPortrait ? "column" : "row";
+
+  const lineSizePx = isPortrait ? rect.height / pixelHorizontalAmount : rect.width / pixelHorizontalAmount;
+  const crossAmount = Math.ceil((isPortrait ? rect.width : rect.height) / lineSizePx);
+
+  let lines = panel.querySelectorAll("[data-transition-col]");
+  const lineTemplate = lines[0];
+  const pixelTemplate = lineTemplate.querySelector("[data-transition-pixel]");
+
+  if (lines.length !== pixelHorizontalAmount) {
+    const frag = document.createDocumentFragment();
+    for (let i = 0; i < pixelHorizontalAmount; i++) {
+      frag.appendChild(lineTemplate.cloneNode(false));
     }
-  });
-
-  tl.to(".transition", {
-    autoAlpha: 1,
-    duration: 0.5,
-    ease: "power1.inOut"
-  }, "<");
-
-  if (underNavInner) {
-    tl.to(underNavInner, {
-      y: "-2em",
-      scale: 0.975,
-      autoAlpha: 0
-    }, "<");
+    panel.replaceChildren(frag);
+    lines = panel.querySelectorAll("[data-transition-col]");
   }
 
-  return tl.then();
+  lines.forEach((line) => {
+    line.style.flexDirection = isPortrait ? "row" : "column";
+    line.style.flex = "1 1 auto";
+    line.style.justifyContent = "center";
+
+    const diff = crossAmount - line.childElementCount;
+
+    if (diff > 0) {
+      const frag = document.createDocumentFragment();
+      for (let i = 0; i < diff; i++) {
+        frag.appendChild(pixelTemplate.cloneNode(true));
+      }
+      line.appendChild(frag);
+    } else if (diff < 0) {
+      for (let i = diff; i < 0; i++) {
+        line.lastElementChild.remove();
+      }
+    }
+  });
+}
+
+function runPageLeaveAnimation(current, next) {
+  closeNavigation();
+
+  const tl = gsap.timeline();
+
+  if (reducedMotion) {
+    tl.set(current, { autoAlpha: 0 });
+    const curInner = current.querySelector(".under-nav-bar__inner");
+    if (curInner) tl.set(curInner, { autoAlpha: 0 });
+    tl.call(() => current.remove(), undefined, 0);
+    return tl;
+  }
+
+  const underNavInner = current.querySelector(".under-nav-bar__inner");
+  if (underNavInner) {
+    tl.to(underNavInner, { y: "-2em", scale: 0.975, autoAlpha: 0, duration: 0.4 }, 0);
+  }
+
+  const isPortrait = window.innerHeight > window.innerWidth;
+  pixelGrid(isPortrait);
+
+  const transitionWrap = document.querySelector("[data-transition-wrap]");
+  const transitionPanel = transitionWrap.querySelector("[data-transition-panel]");
+  const lines = Array.from(transitionPanel.querySelectorAll("[data-transition-col]"));
+  const allPixels = transitionPanel.querySelectorAll("[data-transition-pixel]");
+
+  const overlap = Math.max(0, Math.min(1, pixelOverlap));
+  const clipFrom = isPortrait ? "polygon(0% 0%, 100% 0%, 100% 0%, 0% 0%)" : "polygon(0% 0%, 0% 0%, 0% 100%, 0% 100%)";
+  const clipTo = isPortrait
+    ? "polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)"
+    : "polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)";
+  const clipStart = Math.min(pixelFadeDuration, transitionDuration * 0.5);
+  const clipDuration = Math.max(0.001, transitionDuration - 2 * clipStart);
+  const stepDur = clipDuration / Math.max(1, pixelHorizontalAmount);
+  const transitionEndDelay = transitionDuration / Math.max(1, pixelHorizontalAmount);
+
+  gsap.set(allPixels, { opacity: 0, willChange: "opacity" });
+  gsap.set(transitionPanel, { opacity: 1, willChange: "opacity" });
+
+  gsap.set(next, {
+    autoAlpha: 1,
+    clipPath: clipFrom,
+    webkitClipPath: clipFrom,
+    willChange: "clip-path",
+    force3D: true,
+    maxHeight: "100dvh"
+  });
+
+  lines.forEach((line, i) => {
+    const pixels = Array.from(line.querySelectorAll("[data-transition-pixel]"));
+    if (!pixels.length) return;
+
+    const revealTime = clipStart + i * stepDur;
+    const fillStart = Math.max(0, revealTime - pixelFadeDuration);
+    const fadeStart = Math.min(transitionDuration, revealTime + stepDur);
+    const perPixelMin = pixelFadeDuration / pixels.length;
+    const perPixelDur = perPixelMin * (1 - overlap) + pixelFadeDuration * overlap;
+    const spread = Math.max(0, pixelFadeDuration - perPixelDur);
+
+    tl.to(pixels, {
+      opacity: 1,
+      duration: Math.max(0.001, perPixelDur),
+      ease: "none",
+      stagger: { amount: spread, from: "random" }
+    }, fillStart);
+
+    tl.to(pixels, {
+      opacity: 0,
+      duration: Math.max(0.001, perPixelDur),
+      ease: "none",
+      stagger: { amount: spread, from: "random" }
+    }, fadeStart);
+  });
+
+  tl.to(next, {
+    clipPath: clipTo,
+    webkitClipPath: clipTo,
+    ease: `steps(${pixelHorizontalAmount}, start)`,
+    duration: clipDuration
+  }, clipStart);
+
+  tl.set(next, { clearProps: "clipPath,webkitClipPath,willChange,force3D,maxHeight" }, clipStart + clipDuration);
+
+  tl.call(() => {
+    current.remove();
+  }, undefined, transitionDuration + transitionEndDelay);
+
+  tl.set(allPixels, { clearProps: "willChange" }, transitionDuration + transitionEndDelay);
+  tl.set(transitionPanel, { clearProps: "willChange" }, transitionDuration + transitionEndDelay);
+
+  return tl;
 }
 
 function runPageEnterAnimation(next) {
-  next = next || document;
-  let split = null;
+  const tl = gsap.timeline();
+  const transitionEndDelay = transitionDuration / Math.max(1, pixelHorizontalAmount);
 
-  const underNav = next.querySelector(".under-nav-bar");
-  const underNavInner = next.querySelector(".under-nav-bar__inner");
-  const revealTargets = next.querySelectorAll("[data-load-reveal]");
-  const headings = next.querySelectorAll("[data-load-heading]");
-  const osmoIcon = next.querySelector("[data-load-icon]");
-  const bgGraphic = next.querySelector(".hero-bg__wrap");
-  const radialMarquee = next.querySelector(".radial-marquee__circle");
-
-  if (headings.length) {
-    split = new SplitText(headings, {
-      type: "lines, words",
-      mask: "lines",
-      linesClass: "text-line"
-    });
-
-    gsap.set(split.words, {
-      yPercent: 100,
-      rotate: 10,
-      transformOrigin: "bottom left"
-    });
+  if (reducedMotion) {
+    tl.set(next, { autoAlpha: 1 });
+    tl.add("pageReady");
+    tl.call(resetPage, [next], "pageReady");
+    return new Promise((resolve) => tl.call(() => resolve(), undefined, "pageReady"));
   }
 
-  const tl = gsap.timeline({
-    defaults: {
-      duration: 1.2,
-      ease: "expo.out",
-      stagger: 0.05,
-    },
-    onStart: () => {
-      gsap.set("main", {
-        height: "100svh",
-        overflow: "clip"
-      });
-      lenis.stop();
-      lenis.scrollTo(0, { immediate: true });
-    }
+  tl.add("pageReady", transitionDuration + transitionEndDelay);
+  tl.call(resetPage, [next], "pageReady");
+
+  return new Promise((resolve) => {
+    tl.call(() => resolve(), undefined, "pageReady");
   });
+}
 
-  /* Start Scroll after 0.25s */
-  tl.fromTo(".transition", {
-    autoAlpha: 1
-  }, {
-    autoAlpha: 0,
-    duration: 0.5,
-    ease: "power1.inOut",
-    overwrite: true,
-    onStart: () => {
-      gsap.set("main", { clearProps: "all" });
-      lenis.resize();
-      lenis.start();
-      ScrollTrigger.refresh();
-    }
-  }, 0.3);
+function resetPage(container) {
+  window.scrollTo(0, 0);
+  if (container) gsap.set(container, { clearProps: "position,top,left,right" });
 
-  if (headings.length) {
-    tl.to(split.words, {
-      yPercent: 0,
-      autoAlpha: 1,
-      rotate: 0,
-      delay: 0.1
-    }, "<");
+  if (lenis) {
+    lenis.resize();
+    lenis.start();
   }
-
-  if (osmoIcon) {
-    tl.from(osmoIcon, {
-      yPercent: 100,
-      scale: 0.3,
-      autoAlpha: 0,
-      rotate: -270,
-      transformOrigin: "center center",
-      clearProps: "all"
-    }, "<");
-  }
-
-  if (revealTargets.length) {
-    tl.from(revealTargets, {
-      y: "2em",
-    }, "<");
-  }
-
-  if (radialMarquee) {
-    tl.from(radialMarquee, {
-      rotate: -45,
-      duration: 2,
-      ease: "expo.out"
-    }, "<");
-  }
-
-  if (underNav) {
-    tl.fromTo(underNavInner, {
-      y: "-2em",
-      scale: 0.975,
-    }, {
-      y: "0em",
-      scale: 1,
-      clearProps: "transform",
-    }, "<+=0.2");
-
-    tl.set(underNav, {
-      autoAlpha: 1
-    }, "<");
-  }
-
-  if (bgGraphic) {
-    const circles = bgGraphic.querySelectorAll(".hero-bg__circle")
-    const horizontal = bgGraphic.querySelector(".hero-bg__horizontal")
-    const vertical = bgGraphic.querySelector(".hero-bg__vertical")
-    tl.from(circles, {
-      scale: 0.5,
-      rotate: 180,
-      duration: 1.2,
-    }, "<")
-      .from(horizontal, {
-        scaleX: 0,
-        duration: 1.2
-      }, "<")
-      .from(vertical, {
-        scaleY: 0,
-        duration: 1.2
-      }, "<")
-  }
-
-  return tl.then();
+  ScrollTrigger.refresh();
 }
 
 // —————— INIT EVERYTHING —————— //
