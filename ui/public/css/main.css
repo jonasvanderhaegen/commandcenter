@@ -245,6 +245,14 @@ body {
   -ms-overflow-style: none;
 }
 
+/* Match the body background to the active page theme. The frameless title bar
+   is transparent and the body has a title-bar-height top padding to clear the
+   window controls; without this, that strip (and any overscroll) shows the
+   light body colour on dark pages -- a white bar under the controls. */
+body:has(main[data-page-theme="dark"]) {
+  background-color: var(--color-dark);
+}
+
 h1 {
   letter-spacing: -0.06em;
   margin-top: 0;

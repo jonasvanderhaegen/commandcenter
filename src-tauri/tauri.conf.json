@@ -12,7 +12,14 @@
   "app": {
     "withGlobalTauri": true,
     "windows": [
-      { "label": "main", "title": "Ensemble", "width": 1100, "height": 720, "decorations": false }
+      {
+        "label": "main",
+        "title": "Ensemble",
+        "width": 1100,
+        "height": 720,
+        "minWidth": 400,
+        "decorations": false
+      }
     ],
     "security": { "csp": null }
   },
