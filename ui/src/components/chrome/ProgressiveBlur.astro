@@ -19,7 +19,9 @@
     isolation: isolate;
     contain: paint;
     width: 100%;
-    height: 15em;
+    /* Tall enough that the blurred upper region reaches from the top down to
+       just under the nav bar (nav-bar bottom sits in the blur's upper band). */
+    height: 14rem;
     transform-style: preserve-3d;
     position: fixed;
     top: 0;
