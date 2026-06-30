@@ -1,4 +1,4 @@
-//! Ensemble backend -- the Tauri app and the command surface the UI invokes.
+//! CommandCenter backend -- the Tauri app and the command surface the UI invokes.
 //!
 //! This is a skeleton: `list_projects` / `list_processes` return placeholder
 //! data, and the mutating verbs (`spawn_process`, `spawn_agent`, ...) are
@@ -63,10 +63,36 @@ fn round_window_corners(window: &tauri::WebviewWindow, radius: f64) {
     }
 }
 
+/// Port the embedded cc-mcp stub server listens on (loopback only).
+const CC_MCP_PORT: u16 = 7080;
+
+/// Start the cc-mcp stub MCP server on its own thread/runtime, independent of
+/// Tauri's own async runtime. Loopback-only HTTP; stdio isn't usable inside a
+/// windowed app since stdio is owned by the GUI process, not an MCP client.
+fn spawn_cc_mcp() {
+    std::thread::Builder::new()
+        .name("cc-mcp".into())
+        .spawn(|| {
+            let rt = match tokio::runtime::Runtime::new() {
+                Ok(rt) => rt,
+                Err(err) => {
+                    eprintln!("cc-mcp: failed to start runtime: {err}");
+                    return;
+                }
+            };
+            if let Err(err) = rt.block_on(cc_mcp::serve_http("127.0.0.1", CC_MCP_PORT)) {
+                eprintln!("cc-mcp: server error: {err}");
+            }
+        })
+        .expect("failed to spawn cc-mcp thread");
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .setup(|_app| {
+            spawn_cc_mcp();
+
             #[cfg(target_os = "macos")]
             {
                 use tauri::Manager;
@@ -79,5 +105,5 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![list_projects, list_processes])
         .run(tauri::generate_context!())
-        .expect("error while running Ensemble");
+        .expect("error while running CommandCenter");
 }

@@ -1,0 +1,20 @@
+{
+  "rustc": 17467972547956852243,
+  "features": "[\"default\"]",
+  "declared_features": "[\"default\", \"nightly\"]",
+  "target": 13040855110431087744,
+  "profile": 16604713326390954280,
+  "path": 11551327221119929856,
+  "deps": [],
+  "local": [
+    {
+      "CheckDepInfo": {
+        "dep_info": "debug/.fingerprint/utf8parse-a368d20b66371b05/dep-lib-utf8parse",
+        "checksum": false
+      }
+    }
+  ],
+  "rustflags": [],
+  "config": 8247474407144887393,
+  "compile_kind": 0
+}

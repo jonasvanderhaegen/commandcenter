@@ -1,0 +1,2 @@
+(Tool, for<'a> fn(&'a CcMcpServer, {type error}) -> Pin<Box<(dyn Future<Output = rmcp::model::CallToolResult> + Send + 'a)>> {CcMcpServer::stop_all_commands})
+(Tool, for<'a> fn(&'a CcMcpServer, {type error}) -> Pin<Box<(dyn Future<Output = rmcp::model::CallToolResult> + Send + 'a)>> {CcMcpServer::stop_all_commands}): IntoToolRoute<CcMcpServer, _>

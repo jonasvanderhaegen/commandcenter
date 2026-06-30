@@ -1,8 +1,8 @@
-# Ensemble
+# CommandCenter
 
 A terminal-of-terminals and agent orchestrator for the desktop.
 
-Ensemble groups your work into **projects**. Inside a project you run many
+CommandCenter groups your work into **projects**. Inside a project you run many
 long-lived **processes** (shells, dev servers, build watchers) and **agents**
 (AI coding sessions) side by side, in one window, under one roof. Think
 "tmux with a GUI and agents", or a command center for everything you have

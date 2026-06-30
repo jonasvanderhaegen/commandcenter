@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Ensemble",
+  "productName": "CommandCenter",
   "version": "0.0.1",
-  "identifier": "dev.ensemble.app",
+  "identifier": "dev.commandcenter.app",
   "build": {
     "frontendDist": "../ui/dist",
     "devUrl": "http://localhost:1420",
@@ -15,7 +15,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Ensemble",
+        "title": "CommandCenter",
         "width": 1100,
         "height": 720,
         "minWidth": 400,

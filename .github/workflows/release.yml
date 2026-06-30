@@ -7,7 +7,7 @@ on:
   workflow_dispatch: # dispatch on a vX.Y.Z git tag (single shared runner)
 
 concurrency:
-  group: release-ensemble-${{ github.ref }}
+  group: release-commandcenter-${{ github.ref }}
   cancel-in-progress: false
 
 env:
@@ -100,7 +100,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: ${{ github.ref_name }}
-          releaseName: "Ensemble ${{ github.ref_name }}"
+          releaseName: "CommandCenter ${{ github.ref_name }}"
           releaseDraft: true
           prerelease: false
 

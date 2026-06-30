@@ -1,0 +1,24 @@
+{
+  "rustc": 17467972547956852243,
+  "features": "[\"alloc\", \"default\", \"std\", \"std_rng\", \"sys_rng\", \"thread_rng\"]",
+  "declared_features": "[\"alloc\", \"chacha\", \"default\", \"log\", \"serde\", \"simd_support\", \"std\", \"std_rng\", \"sys_rng\", \"thread_rng\", \"unbiased\"]",
+  "target": 17444007749879458630,
+  "profile": 16604713326390954280,
+  "path": 6263973258619100225,
+  "deps": [
+    [17677849704383718071, "chacha20", false, 9048377429137400154],
+    [17989731678791879549, "getrandom", false, 14808296319608386720],
+    [18359178603293420568, "rand_core", false, 5527627119489745009]
+  ],
+  "local": [
+    {
+      "CheckDepInfo": {
+        "dep_info": "debug/.fingerprint/rand-b13a50ac1ab5e21f/dep-lib-rand",
+        "checksum": false
+      }
+    }
+  ],
+  "rustflags": [],
+  "config": 8247474407144887393,
+  "compile_kind": 0
+}

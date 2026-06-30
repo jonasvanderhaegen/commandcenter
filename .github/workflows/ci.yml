@@ -7,7 +7,7 @@ on:
   # push: { branches: [main] }   # disabled: workflow_dispatch-only per standard
 
 concurrency:
-  group: ci-ensemble-${{ github.ref }}
+  group: ci-commandcenter-${{ github.ref }}
   cancel-in-progress: true
 
 env:
@@ -216,7 +216,7 @@ jobs:
       - name: Render summary
         run: |
           {
-            echo "### Ensemble CI"
+            echo "### CommandCenter CI"
             echo ""
             echo "| Stage | Result |"
             echo "|-------|--------|"

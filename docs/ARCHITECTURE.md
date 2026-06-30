@@ -1,6 +1,6 @@
 # Architecture
 
-Ensemble is a desktop "command center": one window that hosts many terminal
+CommandCenter is a desktop "command center": one window that hosts many terminal
 sessions and AI agents, organized by project. The design is lifted from
 [Solo](https://soloterm.com) -- a Rust/Tauri core with a WebView UI -- adapted
 into a clean skeleton.
@@ -12,7 +12,7 @@ Solo's bet, which we copy: the backend is **Rust** behind **Tauri v2** (the
 WebView (WKWebView on macOS), so there is no bundled Chromium. The terminal
 layer is native rather than `node-pty` + a JS terminal.
 
-| Concern     | Ensemble / Solo (Tauri)      | XVE / Electron      |
+| Concern     | CommandCenter / Solo (Tauri) | XVE / Electron      |
 | ----------- | ---------------------------- | ------------------- |
 | UI runtime  | system WebView (no Chromium) | bundled Chromium    |
 | Backend     | Rust                         | Node / TypeScript   |

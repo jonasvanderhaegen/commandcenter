@@ -1,0 +1,27 @@
+{
+  "rustc": 17467972547956852243,
+  "features": "[\"alloc\", \"ansi\", \"default\", \"fmt\", \"nu-ansi-term\", \"registry\", \"sharded-slab\", \"smallvec\", \"std\", \"thread_local\", \"tracing-log\"]",
+  "declared_features": "[\"alloc\", \"ansi\", \"chrono\", \"default\", \"env-filter\", \"fmt\", \"json\", \"local-time\", \"matchers\", \"nu-ansi-term\", \"once_cell\", \"parking_lot\", \"regex\", \"registry\", \"serde\", \"serde_json\", \"sharded-slab\", \"smallvec\", \"std\", \"thread_local\", \"time\", \"tracing\", \"tracing-log\", \"tracing-serde\", \"valuable\", \"valuable-serde\", \"valuable_crate\"]",
+  "target": 4817557058868189149,
+  "profile": 813943715973782801,
+  "path": 1605333006058435662,
+  "deps": [
+    [1017461770342116999, "sharded_slab", false, 11018224508757881685],
+    [1359731229228270592, "thread_local", false, 4856657925864554905],
+    [2295442787663447226, "smallvec", false, 16131755568347598221],
+    [5599393681448432053, "nu_ansi_term", false, 2142597853535960419],
+    [10806489435541507125, "tracing_log", false, 3746083005059872312],
+    [16023452927926505185, "tracing_core", false, 8808611591735968428]
+  ],
+  "local": [
+    {
+      "CheckDepInfo": {
+        "dep_info": "debug/.fingerprint/tracing-subscriber-70f169f300174ab0/dep-lib-tracing_subscriber",
+        "checksum": false
+      }
+    }
+  ],
+  "rustflags": [],
+  "config": 8247474407144887393,
+  "compile_kind": 0
+}

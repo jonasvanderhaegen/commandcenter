@@ -1,5 +1,5 @@
 {
-  "name": "ensemble",
+  "name": "commandcenter",
   "version": "0.0.1",
   "private": true,
   "description": "A terminal-of-terminals and agent orchestrator",

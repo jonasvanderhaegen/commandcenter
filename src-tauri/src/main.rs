@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    ensemble_lib::run()
+    commandcenter_lib::run()
 }

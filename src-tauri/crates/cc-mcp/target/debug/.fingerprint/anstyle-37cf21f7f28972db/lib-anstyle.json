@@ -1,0 +1,20 @@
+{
+  "rustc": 17467972547956852243,
+  "features": "[\"default\", \"std\"]",
+  "declared_features": "[\"default\", \"std\"]",
+  "target": 6165884447290141869,
+  "profile": 2691871202400666030,
+  "path": 66426086394382713,
+  "deps": [],
+  "local": [
+    {
+      "CheckDepInfo": {
+        "dep_info": "debug/.fingerprint/anstyle-37cf21f7f28972db/dep-lib-anstyle",
+        "checksum": false
+      }
+    }
+  ],
+  "rustflags": [],
+  "config": 8247474407144887393,
+  "compile_kind": 0
+}

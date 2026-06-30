@@ -1,0 +1,15 @@
+/Users/jv/Code/commandcenter/src-tauri/crates/cc-mcp/target/debug/deps/uuid-d05d959fb388006c.d: /Users/jv/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/uuid-1.23.4/src/lib.rs /Users/jv/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/uuid-1.23.4/src/macros.rs /Users/jv/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/uuid-1.23.4/src/builder.rs /Users/jv/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/uuid-1.23.4/src/error.rs /Users/jv/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/uuid-1.23.4/src/non_nil.rs /Users/jv/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/uuid-1.23.4/src/parser.rs /Users/jv/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/uuid-1.23.4/src/fmt.rs /Users/jv/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/uuid-1.23.4/src/timestamp.rs /Users/jv/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/uuid-1.23.4/src/v4.rs /Users/jv/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/uuid-1.23.4/src/rng.rs /Users/jv/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/uuid-1.23.4/src/external.rs
+
+/Users/jv/Code/commandcenter/src-tauri/crates/cc-mcp/target/debug/deps/libuuid-d05d959fb388006c.rmeta: /Users/jv/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/uuid-1.23.4/src/lib.rs /Users/jv/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/uuid-1.23.4/src/macros.rs /Users/jv/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/uuid-1.23.4/src/builder.rs /Users/jv/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/uuid-1.23.4/src/error.rs /Users/jv/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/uuid-1.23.4/src/non_nil.rs /Users/jv/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/uuid-1.23.4/src/parser.rs /Users/jv/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/uuid-1.23.4/src/fmt.rs /Users/jv/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/uuid-1.23.4/src/timestamp.rs /Users/jv/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/uuid-1.23.4/src/v4.rs /Users/jv/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/uuid-1.23.4/src/rng.rs /Users/jv/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/uuid-1.23.4/src/external.rs
+
+/Users/jv/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/uuid-1.23.4/src/lib.rs:
+/Users/jv/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/uuid-1.23.4/src/macros.rs:
+/Users/jv/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/uuid-1.23.4/src/builder.rs:
+/Users/jv/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/uuid-1.23.4/src/error.rs:
+/Users/jv/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/uuid-1.23.4/src/non_nil.rs:
+/Users/jv/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/uuid-1.23.4/src/parser.rs:
+/Users/jv/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/uuid-1.23.4/src/fmt.rs:
+/Users/jv/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/uuid-1.23.4/src/timestamp.rs:
+/Users/jv/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/uuid-1.23.4/src/v4.rs:
+/Users/jv/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/uuid-1.23.4/src/rng.rs:
+/Users/jv/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/uuid-1.23.4/src/external.rs:
