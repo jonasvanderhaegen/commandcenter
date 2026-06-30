@@ -71,6 +71,16 @@
     top: var(--titlebar-h);
   }
 
+  /* Rounded window corners for the frameless, transparent window. overflow
+     clips the content (incl. fixed chrome) to the radius; Lenis still scrolls
+     programmatically so this doesn't break scrolling. ~12px matches the nav
+     bar's pill radius. */
+  html.is-tauri {
+    border-radius: 12px;
+    overflow: hidden;
+    background: transparent;
+  }
+
   .titlebar__controls {
     display: flex;
     height: 100%;
