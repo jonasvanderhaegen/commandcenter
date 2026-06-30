@@ -46,11 +46,13 @@ barba.hooks.beforeEnter((data) => {
   initObserverHub();
   initLenis();
   initScriptsBeforeEnter();
-  // Pixel transition: overlay the incoming page on top of the current one so
-  // the clip-path wipe reveals it in the viewport.
-  // the clip-path wipe reveals it in the viewport. z-index keeps it above the
-  // outgoing page's content but below the nav (100) and pixels (transition, 100).
-  gsap.set(data.next.container, { position: "fixed", top: 0, left: 0, right: 0, zIndex: 60 });
+  // Pixel transition: overlay the incoming page on top of the current one so the
+  // clip-path wipe reveals it. z-index keeps it above the outgoing page but below
+  // the nav (100) and pixels (transition, 100). Pin it at the body's top padding
+  // (the title-bar offset) -- not 0 -- so it doesn't snap down by that amount when
+  // resetPage drops it back into normal flow at the end of the transition.
+  var fixedTop = parseFloat(getComputedStyle(document.body).paddingTop) || 0;
+  gsap.set(data.next.container, { position: "fixed", top: fixedTop, left: 0, right: 0, zIndex: 60 });
   if (lenis && typeof lenis.stop === "function") lenis.stop();
 });
 
