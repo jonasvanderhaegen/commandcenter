@@ -46,7 +46,9 @@ barba.hooks.beforeEnter((data) => {
   initScriptsBeforeEnter();
   // Pixel transition: overlay the incoming page on top of the current one so
   // the clip-path wipe reveals it in the viewport.
-  gsap.set(data.next.container, { position: "fixed", top: 0, left: 0, right: 0 });
+  // the clip-path wipe reveals it in the viewport. z-index keeps it above the
+  // outgoing page's content but below the nav (100) and pixels (transition, 100).
+  gsap.set(data.next.container, { position: "fixed", top: 0, left: 0, right: 0, zIndex: 60 });
   if (lenis && typeof lenis.stop === "function") lenis.stop();
 });
 
@@ -425,7 +427,7 @@ function runPageEnterAnimation(next) {
 
 function resetPage(container) {
   window.scrollTo(0, 0);
-  if (container) gsap.set(container, { clearProps: "position,top,left,right" });
+  if (container) gsap.set(container, { clearProps: "position,top,left,right,zIndex" });
 
   if (lenis) {
     lenis.resize();
