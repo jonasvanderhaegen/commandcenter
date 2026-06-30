@@ -104,6 +104,19 @@
     background: transparent;
     opacity: 1;
   }
+
+  /* The medium purple loses contrast over dark sections showing through the
+     transparent bar. The nav theme tracker already flags those: it sets
+     data-nav-theme="dark" on the nav at load (dark pages) and during Lenis
+     scroll (dark sections). Reuse that signal -- same body:has() hook as the
+     menu scrim above -- to brighten the controls so they stay legible. */
+  body:has(.nav[data-nav-theme="dark"]) .titlebar__btn {
+    color: color-mix(in srgb, var(--color-purple), white 35%);
+    opacity: 0.92;
+  }
+  body:has(.nav[data-nav-theme="dark"]) .titlebar__btn:hover {
+    opacity: 1;
+  }
 </style>
 
 <script is:inline>
