@@ -37,7 +37,9 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: #161616;
+    background-color: rgba(18, 18, 18, 0.55);
+    -webkit-backdrop-filter: blur(14px) saturate(160%);
+    backdrop-filter: blur(14px) saturate(160%);
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     -webkit-user-select: none;
     user-select: none;
@@ -66,9 +68,10 @@
     margin: 0;
     padding: 0;
     background: transparent;
-    color: rgba(255, 255, 255, 0.65);
+    color: var(--color-purple);
+    opacity: 0.8;
     cursor: pointer;
-    transition: background-color 0.12s ease, color 0.12s ease;
+    transition: opacity 0.12s ease;
   }
 
   .titlebar__btn svg {
@@ -80,13 +83,8 @@
   }
 
   .titlebar__btn:hover {
-    background-color: rgba(255, 255, 255, 0.08);
-    color: #fff;
-  }
-
-  .titlebar__btn--close:hover {
-    background-color: #e81123;
-    color: #fff;
+    background: transparent;
+    opacity: 1;
   }
 </style>
 

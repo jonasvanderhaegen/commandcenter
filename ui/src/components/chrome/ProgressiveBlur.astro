@@ -1,0 +1,96 @@
+---
+// Progressive blur behind the top nav, ported verbatim from apps/landing.
+// A stack of backdrop-filter layers with to-top gradient masks produces a
+// smooth iOS-style blur gradient; it fades in once the page is scrolled.
+---
+
+<div class="progressive-blur">
+  <div class="progressive-blur__layer is--1"></div>
+  <div class="progressive-blur__layer is--2"></div>
+  <div class="progressive-blur__layer is--3"></div>
+  <div class="progressive-blur__layer is--4"></div>
+  <div class="progressive-blur__layer is--5"></div>
+</div>
+
+<style is:global>
+  .progressive-blur {
+    z-index: 40;
+    pointer-events: none;
+    isolation: isolate;
+    contain: paint;
+    width: 100%;
+    height: 15em;
+    transform-style: preserve-3d;
+    position: fixed;
+    top: 0;
+    left: 0;
+    overflow: hidden;
+    transform: translateZ(0);
+    opacity: 0;
+    transition: opacity 0.4s ease;
+  }
+
+  .progressive-blur.is--visible {
+    opacity: 1;
+  }
+
+  /* In the frameless app, sit below the custom title bar. */
+  html.is-tauri .progressive-blur {
+    top: var(--titlebar-h);
+  }
+
+  .progressive-blur__layer {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+  }
+
+  .progressive-blur__layer.is--1 {
+    -webkit-backdrop-filter: blur(0.09375em);
+    backdrop-filter: blur(0.09375em);
+    -webkit-mask: linear-gradient(to top, #0000 50%, #000 62.5% 75%, #0000 87.5%);
+    mask: linear-gradient(to top, #0000 50%, #000 62.5% 75%, #0000 87.5%);
+  }
+
+  .progressive-blur__layer.is--2 {
+    -webkit-backdrop-filter: blur(0.1875em);
+    backdrop-filter: blur(0.1875em);
+    -webkit-mask: linear-gradient(to top, #0000 62.5%, #000 75% 87.5%, #0000 100%);
+    mask: linear-gradient(to top, #0000 62.5%, #000 75% 87.5%, #0000 100%);
+  }
+
+  .progressive-blur__layer.is--3 {
+    -webkit-backdrop-filter: blur(0.375em);
+    backdrop-filter: blur(0.375em);
+    -webkit-mask: linear-gradient(to top, #0000 75%, #000 87.5% 100%);
+    mask: linear-gradient(to top, #0000 75%, #000 87.5% 100%);
+  }
+
+  .progressive-blur__layer.is--4 {
+    -webkit-backdrop-filter: blur(0.75em);
+    backdrop-filter: blur(0.75em);
+    -webkit-mask: linear-gradient(to top, #0000 82%, #000 92% 100%);
+    mask: linear-gradient(to top, #0000 82%, #000 92% 100%);
+  }
+
+  .progressive-blur__layer.is--5 {
+    -webkit-backdrop-filter: blur(1.5em);
+    backdrop-filter: blur(1.5em);
+    -webkit-mask: linear-gradient(to top, #0000 88%, #000 100%);
+    mask: linear-gradient(to top, #0000 88%, #000 100%);
+  }
+</style>
+
+<script is:inline>
+  (function () {
+    var blur = document.querySelector(".progressive-blur");
+    if (!blur) return;
+    window.addEventListener(
+      "scroll",
+      function () {
+        blur.classList.toggle("is--visible", window.scrollY > 50);
+      },
+      { passive: true },
+    );
+  })();
+</script>

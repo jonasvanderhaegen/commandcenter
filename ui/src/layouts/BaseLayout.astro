@@ -1,6 +1,7 @@
 ---
 import SiteNav from "../components/chrome/SiteNav.astro";
 import TitleBar from "../components/chrome/TitleBar.astro";
+import ProgressiveBlur from "../components/chrome/ProgressiveBlur.astro";
 
 
 type Props = {
@@ -29,6 +30,7 @@ const { title = "Osmo", description } = Astro.props;
 
   <body data-barba="wrapper" class="body">
     <TitleBar />
+    <ProgressiveBlur />
     <SiteNav />
 
     <slot />
