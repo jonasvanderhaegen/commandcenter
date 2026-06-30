@@ -494,6 +494,17 @@ html::-webkit-scrollbar {
   color: var(--color-light);
 }
 
+/* Mirror of the dark rule above. Without it, a section flagged
+   data-theme-section="light" on a dark page (the product pages set
+   data-page-theme="dark") gets no background and inherits the dark body text,
+   so it renders dark-on-dark (e.g. the FAQ accordion). :where() keeps zero
+   specificity, so any section with its own background still wins, and on light
+   pages this resolves to the same neutral-200 the body already paints. */
+:where([data-theme-section="light"]) {
+  background-color: var(--color-light);
+  color: var(--color-dark);
+}
+
 .text-mask-line-mask {
   margin: -0.2em -0.1em;
   padding: 0.1em 0.1em;
@@ -8773,6 +8784,20 @@ body:has(
   )
   .cursor-bubble__drag-span {
   transform: translateY(0%) scale(1) rotate(0.001deg);
+}
+
+/* In the drag state the "Drag" label slides to centre (rule above) while the
+   prev/next arrow stays at translateY(0), so the two collide in the middle of
+   the bubble. The arrow belongs to the prev/next states only -- hide it while
+   dragging. Same selector as the drag-span/dots rules, so prev/next is left
+   untouched (it never matches these triggers). */
+body:has(
+    [data-cursor="drag"]:hover,
+    [data-flick-drag-status] [data-flick-cards-dragger]:hover,
+    [data-gsap-slider-collection]:hover
+  )
+  .cursor-bubble__arrow {
+  opacity: 0;
 }
 
 .cursor__drag-dots,
