@@ -22,7 +22,7 @@
     /* Covers the nav band (top down to just under the nav bar) and fades out
        there; in the frameless app add the title-bar height so it still clears
        the nav, which is pushed down by the bar. */
-    height: 5rem;
+    height: 8rem;
     transform-style: preserve-3d;
     position: fixed;
     top: 0;
@@ -34,7 +34,7 @@
   }
 
   html.is-tauri .progressive-blur {
-    height: calc(5rem + var(--titlebar-h));
+    height: calc(8rem + var(--titlebar-h));
   }
 
   .progressive-blur.is--visible {
