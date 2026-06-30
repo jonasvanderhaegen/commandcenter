@@ -16,3 +16,10 @@ tauri-build = { version = "2", features = [] }
 tauri = { version = "2", features = ["macos-private-api"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+
+# macOS-only: round the frameless transparent window's corners via the native
+# content-view layer (see round_window_corners in lib.rs). objc2 crates are
+# already in the tree (Tauri uses them), so this adds no new versions.
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2-app-kit = { version = "0.3.2", features = ["NSWindow", "NSView"] }
+objc2-quartz-core = { version = "0.3.2", features = ["CALayer"] }
