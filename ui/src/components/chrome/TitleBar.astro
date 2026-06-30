@@ -43,11 +43,31 @@
     user-select: none;
   }
 
+  /* When the nav menu opens, darken the title bar with the same scrim as the
+     page (.nav__bg = rgba(0,0,0,0.3)) and fade it in/out with the menu. */
+  html.is-tauri .titlebar::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-color: #0000004d;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition:
+      opacity var(--animation-default),
+      visibility var(--animation-default);
+  }
+  body:has(.nav[data-nav-status="active"]) .titlebar::after {
+    opacity: 1;
+    visibility: visible;
+  }
+
   /* Push the app (flow content + the fixed Osmo nav) below the bar. */
   html.is-tauri body {
     padding-top: var(--titlebar-h);
   }
-  html.is-tauri .nav {
+  html.is-tauri .nav,
+  html.is-tauri .under-nav-bar {
     top: var(--titlebar-h);
   }
 

@@ -256,6 +256,20 @@ function runPageOnceAnimation() {
     duration: 1
   }, "0.25");
 
+  const onceUnderNav = document.querySelector(".under-nav-bar");
+  const onceUnderNavInner = document.querySelector(".under-nav-bar__inner");
+  if (onceUnderNav) {
+    tl.set(onceUnderNav, { autoAlpha: 1 }, 0.25);
+    if (onceUnderNavInner) {
+      tl.fromTo(
+        onceUnderNavInner,
+        { y: "-2em", scale: 0.975, autoAlpha: 0 },
+        { y: 0, scale: 1, autoAlpha: 1, duration: 0.6, ease: "expo.out", clearProps: "transform" },
+        0.25
+      );
+    }
+  }
+
   tl.call(function () {
     lenis.resize();
     lenis.start();
@@ -414,8 +428,14 @@ function runPageEnterAnimation(next) {
   const tl = gsap.timeline();
   const transitionEndDelay = transitionDuration / Math.max(1, pixelHorizontalAmount);
 
+  // Reveal the incoming page's under-nav marquee (hidden by default via CSS).
+  const underNav = next.querySelector(".under-nav-bar");
+  const underNavInner = next.querySelector(".under-nav-bar__inner");
+
   if (reducedMotion) {
     tl.set(next, { autoAlpha: 1 });
+    if (underNav) tl.set(underNav, { autoAlpha: 1 });
+    if (underNavInner) tl.set(underNavInner, { autoAlpha: 1, clearProps: "transform" });
     tl.add("pageReady");
     tl.call(resetPage, [next], "pageReady");
     return new Promise((resolve) => tl.call(() => resolve(), undefined, "pageReady"));
@@ -423,6 +443,18 @@ function runPageEnterAnimation(next) {
 
   tl.add("pageReady", transitionDuration + transitionEndDelay);
   tl.call(resetPage, [next], "pageReady");
+
+  if (underNav) {
+    tl.set(underNav, { autoAlpha: 1 }, "pageReady");
+    if (underNavInner) {
+      tl.fromTo(
+        underNavInner,
+        { y: "-2em", scale: 0.975, autoAlpha: 0 },
+        { y: 0, scale: 1, autoAlpha: 1, duration: 0.6, ease: "expo.out", clearProps: "transform" },
+        "pageReady"
+      );
+    }
+  }
 
   return new Promise((resolve) => {
     tl.call(() => resolve(), undefined, "pageReady");
