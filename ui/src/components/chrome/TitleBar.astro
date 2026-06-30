@@ -1,0 +1,131 @@
+---
+// Custom frameless window title bar (Tauri decorations:false). Native traffic
+// lights are gone; this provides the drag region + minimize/maximize/close.
+// Only shown inside Tauri (window.__TAURI__); in a plain browser it stays hidden
+// and the layout offset is not applied.
+---
+
+<div class="titlebar" data-tauri-drag-region>
+  <span class="titlebar__title" data-tauri-drag-region>Ensemble</span>
+  <div class="titlebar__controls">
+    <button type="button" class="titlebar__btn" data-tb="minimize" aria-label="Minimize">
+      <svg viewBox="0 0 12 12" aria-hidden="true"><line x1="2.5" y1="6" x2="9.5" y2="6"></line></svg>
+    </button>
+    <button type="button" class="titlebar__btn" data-tb="maximize" aria-label="Maximize">
+      <svg viewBox="0 0 12 12" aria-hidden="true"><rect x="2.75" y="2.75" width="6.5" height="6.5"></rect></svg>
+    </button>
+    <button type="button" class="titlebar__btn titlebar__btn--close" data-tb="close" aria-label="Close">
+      <svg viewBox="0 0 12 12" aria-hidden="true"><line x1="3" y1="3" x2="9" y2="9"></line><line x1="9" y1="3" x2="3" y2="9"></line></svg>
+    </button>
+  </div>
+</div>
+
+<style is:global>
+  :root {
+    --titlebar-h: 36px;
+  }
+
+  /* Hidden until we know we're inside Tauri (set by the script below). */
+  .titlebar {
+    display: none;
+  }
+
+  html.is-tauri .titlebar {
+    position: fixed;
+    inset: 0 0 auto 0;
+    height: var(--titlebar-h);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 0 0 1rem;
+    background-color: #161616;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  /* Push the app (flow content + the fixed Osmo nav) below the bar. */
+  html.is-tauri body {
+    padding-top: var(--titlebar-h);
+  }
+  html.is-tauri .nav {
+    top: var(--titlebar-h);
+  }
+
+  .titlebar__title {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: rgba(255, 255, 255, 0.72);
+    pointer-events: none;
+  }
+
+  .titlebar__controls {
+    display: flex;
+    height: 100%;
+  }
+
+  .titlebar__btn {
+    width: 46px;
+    height: 100%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.65);
+    cursor: pointer;
+    transition: background-color 0.12s ease, color 0.12s ease;
+  }
+
+  .titlebar__btn svg {
+    width: 12px;
+    height: 12px;
+    stroke: currentColor;
+    stroke-width: 1.2;
+    fill: none;
+  }
+
+  .titlebar__btn:hover {
+    background-color: rgba(255, 255, 255, 0.08);
+    color: #fff;
+  }
+
+  .titlebar__btn--close:hover {
+    background-color: #e81123;
+    color: #fff;
+  }
+</style>
+
+<script is:inline>
+  (function () {
+    var tauri = window.__TAURI__;
+    if (!tauri || !tauri.window) return; // plain browser: leave the bar hidden
+
+    document.documentElement.classList.add("is-tauri");
+
+    function appWindow() {
+      var w = tauri.window;
+      if (typeof w.getCurrentWindow === "function") return w.getCurrentWindow();
+      if (typeof w.getCurrent === "function") return w.getCurrent();
+      return null;
+    }
+
+    var actions = {
+      minimize: function (win) { win.minimize(); },
+      maximize: function (win) { win.toggleMaximize(); },
+      close: function (win) { win.close(); },
+    };
+
+    document.querySelectorAll(".titlebar__btn").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var win = appWindow();
+        var fn = actions[btn.dataset.tb];
+        if (win && fn) fn(win);
+      });
+    });
+  })();
+</script>
