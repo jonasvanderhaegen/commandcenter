@@ -1,0 +1,60 @@
+[graph]
+targets = []
+
+[advisories]
+version = 2
+# Add RUSTSEC IDs here only after confirming no upstream fix is available.
+# All entries below are unmaintained/unsound advisories from the deprecated
+# gtk-rs / glib tree that Tauri 2 still pulls in transitively (no upstream fix).
+ignore = [
+    "RUSTSEC-2024-0370", # proc-macro-error unmaintained
+    "RUSTSEC-2024-0411", # gtk3 bindings unmaintained
+    "RUSTSEC-2024-0412",
+    "RUSTSEC-2024-0413",
+    "RUSTSEC-2024-0414",
+    "RUSTSEC-2024-0415",
+    "RUSTSEC-2024-0416",
+    "RUSTSEC-2024-0417",
+    "RUSTSEC-2024-0418",
+    "RUSTSEC-2024-0419",
+    "RUSTSEC-2024-0420",
+    "RUSTSEC-2025-0075",
+    "RUSTSEC-2025-0080",
+    "RUSTSEC-2025-0081",
+    "RUSTSEC-2025-0098", # unic-ucd-version unmaintained
+    "RUSTSEC-2025-0100",
+]
+
+[licenses]
+version = 2
+# This app crate is never published (publish = false); skip its own license.
+private = { ignore = true }
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "MPL-2.0",
+    "Unicode-3.0",
+    "Unicode-DFS-2016",
+    "Zlib",
+    # ISC: permissive, equivalent to MIT.
+    "ISC",
+    # BSD-2-Clause / BSD-3-Clause: permissive.
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    # BSL-1.0: Boost license, permissive (some Tauri/webview deps).
+    "BSL-1.0",
+    # CDLA-Permissive-2.0: permissive data license for webpki-roots' CA-cert
+    # bundle (data from CCADB). Allows use/modify/share + relicensing, no copyleft.
+    "CDLA-Permissive-2.0",
+    # CC0-1.0: public-domain dedication, maximally permissive, no copyleft.
+    "CC0-1.0",
+]
+
+[bans]
+multiple-versions = "warn"
+wildcards = "allow"
+
+[sources]
+unknown-registry = "warn"
+unknown-git = "warn"

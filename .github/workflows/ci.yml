@@ -1,37 +1,235 @@
 name: CI
 
 on:
-  push:
-    branches: [main]
+  workflow_dispatch: # primary: single shared runner gated by the dispatcher
   pull_request:
+    branches: [main]
+  # push: { branches: [main] }   # disabled: workflow_dispatch-only per standard
+
+concurrency:
+  group: ci-ensemble-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+  CARGO_PROFILE_TEST_DEBUG: "0"
+  RUSTFLAGS: "-D warnings"
+  CARGO_BUILD_JOBS: "2" # cap parallel rustc — box shared with the skyline daemon (port 7333)
+  RUST_TEST_THREADS: "2"
 
 jobs:
+  preflight:
+    name: Preflight (disk guard)
+    runs-on: { group: builds, labels: [self-hosted, macOS, ARM64, light] }
+    timeout-minutes: 3
+    env: { MIN_FREE_GB: "15" }
+    steps:
+      - name: Abort if free disk below minimum
+        run: |
+          free_gb=$(df -g /System/Volumes/Data 2>/dev/null | tail -1 | awk '{print $4}')
+          echo "Free disk: ${free_gb} GB (min ${MIN_FREE_GB} GB)"
+          if [ "${free_gb:-0}" -lt "$MIN_FREE_GB" ]; then
+            echo "::error::Insufficient disk: ${free_gb}GB free < ${MIN_FREE_GB}GB. Aborting CI — free space and re-run."
+            exit 1
+          fi
+
+  # ── Frontend: build the Astro assets the Tauri crate embeds (frontendDist) ──
   frontend:
-    runs-on: ubuntu-latest
+    name: Frontend (build ui/dist)
+    runs-on: { group: builds, labels: [self-hosted, macOS, ARM64, light] }
+    timeout-minutes: 20
+    needs: [preflight]
     defaults:
       run:
         working-directory: ui
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: actions/setup-node@v4
         with:
-          node-version: "24"
+          node-version-file: .node-version
       - run: npm ci
       - run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: ui/dist
+          if-no-files-found: error
+          retention-days: 1
 
-  rust:
-    runs-on: ubuntu-latest
+  # ── Stage 1: static analysis (parallel) ──────────────────────────────────
+  fmt:
+    name: Format
+    runs-on: { group: builds, labels: [self-hosted, macOS, ARM64, light] }
+    timeout-minutes: 10
+    needs: [preflight]
     defaults:
       run:
         working-directory: src-tauri
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt, clippy
-      - name: Tauri system dependencies
+      - run: echo "$HOME/.cargo/bin" >> "$GITHUB_PATH" # self-hosted: use preinstalled rustup
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - run: cargo fmt --all --check
+
+  clippy:
+    name: Clippy
+    runs-on: { group: builds, labels: [self-hosted, macOS, ARM64, heavy] }
+    timeout-minutes: 90
+    needs: [preflight, frontend]
+    defaults:
+      run:
+        working-directory: src-tauri
+    env:
+      SCCACHE_BUCKET: skylence-artifacts
+      SCCACHE_ENDPOINT: "https://0bfc528cccf1182a4c1b2e891492697c.r2.cloudflarestorage.com"
+      SCCACHE_REGION: auto
+      SCCACHE_S3_KEY_PREFIX: sccache
+      SCCACHE_BASEDIR: ${{ github.workspace }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+    steps:
+      - run: echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with: { clean: "false" }
+      - name: Disk guard (cargo clean if < 20 GB free)
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev libayatana-appindicator3-dev
-      - run: cargo fmt -- --check
-      - run: cargo clippy --all-targets -- -D warnings
+          free_kb=$(df -k . | tail -1 | awk '{print $4}')
+          if [ "$free_kb" -lt 20000000 ]; then echo "Below 20 GB free — cargo clean"; cargo clean; fi
+          df -h .
+      - uses: actions/download-artifact@v4
+        with: { name: frontend-dist, path: ui/dist }
+      - name: Enable sccache if R2 cache reachable (else build uncached)
+        shell: bash
+        run: |
+          if ! command -v sccache >/dev/null 2>&1 || ! sccache --version | grep -q '0.16.0'; then
+            RUSTC_WRAPPER= cargo install --locked --force sccache@0.16.0
+          fi
+          sccache --stop-server 2>/dev/null || true
+          if sccache --start-server 2>/dev/null; then
+            echo "RUSTC_WRAPPER=sccache" >> "$GITHUB_ENV"
+          else
+            echo "sccache/R2 cache unreachable — building without cache"
+          fi
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          {
+            workspaces: "src-tauri",
+            cache-bin: "false",
+            cache-targets: "false",
+            save-if: "${{ github.ref == 'refs/heads/main' }}",
+          }
+      # taskpolicy -b = macOS background QoS — yields CPU/IO to the skyline daemon
+      - run: taskpolicy -b cargo clippy --all-targets -- -D warnings
+      - name: sccache stats
+        if: always()
+        run: sccache --show-stats >> "$GITHUB_STEP_SUMMARY" || true
+
+  deny:
+    name: cargo-deny
+    runs-on: { group: builds, labels: [self-hosted, macOS, ARM64, light] }
+    timeout-minutes: 10
+    needs: [preflight]
+    defaults:
+      run:
+        working-directory: src-tauri
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: taiki-e/install-action@9bcaee1dcae34154180f412e2fa69355a7cda9f6 # v2.82.6
+        with: { tool: cargo-deny }
+      - run: cargo deny check
+
+  audit:
+    name: cargo-audit
+    runs-on: { group: builds, labels: [self-hosted, macOS, ARM64, light] }
+    timeout-minutes: 10
+    needs: [preflight]
+    defaults:
+      run:
+        working-directory: src-tauri
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: taiki-e/install-action@9bcaee1dcae34154180f412e2fa69355a7cda9f6 # v2.82.6
+        with: { tool: cargo-audit }
+      - run: cargo audit
+
+  # ── Stage 2: tests (only if all Stage-1 passed) ──────────────────────────
+  test:
+    name: Test
+    runs-on: { group: builds, labels: [self-hosted, macOS, ARM64, heavy] }
+    timeout-minutes: 90
+    needs: [preflight, frontend, fmt, clippy, deny, audit]
+    defaults:
+      run:
+        working-directory: src-tauri
+    env:
+      SCCACHE_BUCKET: skylence-artifacts
+      SCCACHE_ENDPOINT: "https://0bfc528cccf1182a4c1b2e891492697c.r2.cloudflarestorage.com"
+      SCCACHE_REGION: auto
+      SCCACHE_S3_KEY_PREFIX: sccache
+      SCCACHE_BASEDIR: ${{ github.workspace }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+    steps:
+      - run: echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with: { clean: "false" }
+      - name: Disk guard (cargo clean if < 20 GB free)
+        run: |
+          free_kb=$(df -k . | tail -1 | awk '{print $4}')
+          if [ "$free_kb" -lt 20000000 ]; then echo "Below 20 GB free — cargo clean"; cargo clean; fi
+          df -h .
+      - uses: actions/download-artifact@v4
+        with: { name: frontend-dist, path: ui/dist }
+      - name: Enable sccache if R2 cache reachable (else build uncached)
+        shell: bash
+        run: |
+          if ! command -v sccache >/dev/null 2>&1 || ! sccache --version | grep -q '0.16.0'; then
+            RUSTC_WRAPPER= cargo install --locked --force sccache@0.16.0
+          fi
+          sccache --stop-server 2>/dev/null || true
+          if sccache --start-server 2>/dev/null; then
+            echo "RUSTC_WRAPPER=sccache" >> "$GITHUB_ENV"
+          else
+            echo "sccache/R2 cache unreachable — building without cache"
+          fi
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          {
+            workspaces: "src-tauri",
+            cache-bin: "false",
+            cache-targets: "false",
+            save-if: "${{ github.ref == 'refs/heads/main' }}",
+          }
+      - run: taskpolicy -b cargo test
+      - name: sccache stats
+        if: always()
+        run: sccache --show-stats >> "$GITHUB_STEP_SUMMARY" || true
+
+  # ── Summary: rollup to the GitHub job-summary page ───────────────────────
+  summary:
+    name: Summary
+    runs-on: { group: builds, labels: [self-hosted, macOS, ARM64, light] }
+    timeout-minutes: 5
+    needs: [preflight, frontend, fmt, clippy, deny, audit, test]
+    if: always()
+    steps:
+      - name: Render summary
+        run: |
+          {
+            echo "### Ensemble CI"
+            echo ""
+            echo "| Stage | Result |"
+            echo "|-------|--------|"
+            echo "| Frontend | ${{ needs.frontend.result }} |"
+            echo "| Format | ${{ needs.fmt.result }} |"
+            echo "| Clippy | ${{ needs.clippy.result }} |"
+            echo "| cargo-deny | ${{ needs.deny.result }} |"
+            echo "| cargo-audit | ${{ needs.audit.result }} |"
+            echo "| Test | ${{ needs.test.result }} |"
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Fail if any stage failed
+        if: >-
+          ${{ needs.frontend.result != 'success' || needs.fmt.result != 'success'
+           || needs.clippy.result != 'success' || needs.deny.result != 'success'
+           || needs.audit.result != 'success' || needs.test.result != 'success' }}
+        run: exit 1
