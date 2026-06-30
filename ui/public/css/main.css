@@ -388,6 +388,9 @@ html::-webkit-scrollbar {
 
 .main {
   overflow: clip;
+  /* Each page container is its own stacking context so its z-indexed content
+     can't escape above the incoming fixed container during the pixel wipe. */
+  isolation: isolate;
 }
 
 .container {
