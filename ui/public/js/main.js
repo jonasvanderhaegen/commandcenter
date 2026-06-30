@@ -433,6 +433,10 @@ function resetPage(container) {
 
   if (lenis) {
     lenis.resize();
+    // Reset Lenis' own scroll to the top on every navigation (native scrollTo
+    // alone leaves Lenis' internal target where it was, which can drift the page
+    // down a little each time). Matches Osmo's original enter reset.
+    lenis.scrollTo(0, { immediate: true, force: true });
     lenis.start();
   }
   ScrollTrigger.refresh();
