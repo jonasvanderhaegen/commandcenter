@@ -6,7 +6,10 @@ pre-commit:
   parallel: true
   jobs:
     - name: format
-      glob: "*.{js,ts,jsx,tsx,astro,mjs,cjs,json,css,scss,md,html,yml,yaml}"
+      # No `astro` here: vp fmt doesn't format .astro, and an all-.astro staged
+      # set makes it error ("Expected at least one target file"). .astro is still
+      # linted below.
+      glob: "*.{js,ts,jsx,tsx,mjs,cjs,json,css,scss,md,html,yml,yaml}"
       exclude:
         - "ui/public/**"
       run: vp fmt {staged_files}

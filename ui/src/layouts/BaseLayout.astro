@@ -1,6 +1,6 @@
 ---
 import SiteNav from "../components/chrome/SiteNav.astro";
-import SiteFooter from "../components/chrome/SiteFooter.astro";
+
 
 type Props = {
   title?: string;
@@ -31,8 +31,6 @@ const { title = "Osmo", description } = Astro.props;
 
     <slot />
 
-    <SiteFooter />
-
     <!-- Osmo's real animation stack: classic (non-module) scripts so main.js's
          bare globals (gsap, barba, Lenis, Hls, …) resolve to window.*. Order
          matches index.html. Vendored locally so it works offline in Tauri. -->
@@ -48,54 +46,5 @@ const { title = "Osmo", description } = Astro.props;
     <script is:inline src="/vendor/lenis.min.js"></script>
     <script is:inline src="/vendor/hls.min.js"></script>
     <script is:inline src="/js/main.js"></script>
-
-    <!-- Parallax footer, adapted from apps/landing's footer-parallax.ts. The
-         footer is shared chrome outside the Barba container: scrub a parallax
-         on the inner footer plus a dark overlay as it scrolls into view, and
-         hide it during a transition so it never flashes to the top. -->
-    <script is:inline>
-      (function () {
-        var gsap = window.gsap,
-          ScrollTrigger = window.ScrollTrigger,
-          barba = window.barba;
-        if (!gsap || !ScrollTrigger) return;
-        gsap.registerPlugin(ScrollTrigger);
-
-        function initFooterParallax() {
-          document.querySelectorAll("[data-footer-parallax]").forEach(function (el) {
-            if (el.dataset.fpInit) return;
-            el.dataset.fpInit = "1";
-            var inner = el.querySelector(".footer");
-            var dark = el.querySelector("[data-footer-parallax-dark]");
-            var tl = gsap.timeline({
-              scrollTrigger: {
-                trigger: el,
-                start: "clamp(top bottom)",
-                end: "clamp(top top)",
-                scrub: true,
-              },
-            });
-            if (inner) tl.from(inner, { yPercent: -25, ease: "none" });
-            if (dark) tl.from(dark, { opacity: 0.5, ease: "none" }, "<");
-          });
-        }
-        initFooterParallax();
-
-        if (barba) {
-          barba.hooks.leave(function () {
-            gsap.set("[data-footer-parallax]", { autoAlpha: 0 });
-          });
-          barba.hooks.afterEnter(function () {
-            // Barba reinserts the new container after the footer, leaving the
-            // footer above the page. Put it back directly after the container.
-            var c = document.querySelector('[data-barba="container"]');
-            var fw = document.querySelector("[data-footer-parallax]");
-            if (c && fw && fw.previousElementSibling !== c) c.after(fw);
-            gsap.set("[data-footer-parallax]", { autoAlpha: 1 });
-            ScrollTrigger.refresh();
-          });
-        }
-      })();
-    </script>
   </body>
 </html>
