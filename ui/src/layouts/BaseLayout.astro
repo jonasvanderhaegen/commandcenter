@@ -1,5 +1,6 @@
 ---
 import SiteNav from "../components/chrome/SiteNav.astro";
+import TitleBar from "../components/chrome/TitleBar.astro";
 
 
 type Props = {
@@ -27,6 +28,7 @@ const { title = "Osmo", description } = Astro.props;
   </head>
 
   <body data-barba="wrapper" class="body">
+    <TitleBar />
     <SiteNav />
 
     <slot />
