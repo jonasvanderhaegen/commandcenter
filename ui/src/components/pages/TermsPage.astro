@@ -1,0 +1,10 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import pageHtml from "../../markup/terms-and-conditions-main.html?raw";
+---
+
+<BaseLayout title="Terms & Conditions - Osmo">
+  <main data-barba="container" data-barba-namespace="legal-terms" data-page-theme="light" class="main">
+    <Fragment set:html={pageHtml} />
+  </main>
+</BaseLayout>

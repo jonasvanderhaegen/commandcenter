@@ -1,0 +1,10 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import pageHtml from "../../markup/vault-main.html?raw";
+---
+
+<BaseLayout title="The Vault - Osmo">
+  <main data-barba="container" data-barba-namespace="product-vault" data-page-theme="dark" class="main">
+    <Fragment set:html={pageHtml} />
+  </main>
+</BaseLayout>

@@ -1,0 +1,10 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import pageHtml from "../../markup/plans-main.html?raw";
+---
+
+<BaseLayout title="Plans & Pricing - Osmo">
+  <main data-barba="container" data-barba-namespace="plans" data-page-theme="light" class="main">
+    <Fragment set:html={pageHtml} />
+  </main>
+</BaseLayout>
