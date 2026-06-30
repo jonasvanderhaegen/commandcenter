@@ -1,15 +1,20 @@
 # Git hooks for Ensemble. Run `lefthook install` once after cloning.
 # Frontend formatting/linting via Vite+ (vp); Rust via cargo.
+# public/ holds vendored libraries + static assets — never lint/format it.
 
 pre-commit:
   parallel: true
   jobs:
     - name: format
       glob: "*.{js,ts,jsx,tsx,astro,mjs,cjs,json,css,scss,md,html,yml,yaml}"
+      exclude:
+        - "ui/public/**"
       run: vp fmt {staged_files}
       stage_fixed: true
     - name: lint
       glob: "*.{js,ts,jsx,tsx,astro,mjs,cjs}"
+      exclude:
+        - "ui/public/**"
       run: vp lint {staged_files}
     - name: rustfmt
       glob: "src-tauri/**/*.rs"

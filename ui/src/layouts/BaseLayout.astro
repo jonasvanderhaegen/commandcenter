@@ -33,9 +33,20 @@ const { title = "Osmo", description } = Astro.props;
 
     <SiteFooter />
 
-    <script>
-      import "../scripts/pixel-transition";
-      import "../scripts/nav";
-    </script>
+    <!-- Osmo's real animation stack: classic (non-module) scripts so main.js's
+         bare globals (gsap, barba, Lenis, Hls, …) resolve to window.*. Order
+         matches index.html. Vendored locally so it works offline in Tauri. -->
+    <script is:inline src="/vendor/barba.umd.min.js"></script>
+    <script is:inline src="/vendor/barba-prefetch.umd.js"></script>
+    <script is:inline src="/vendor/gsap.min.js"></script>
+    <script is:inline src="/vendor/Draggable.min.js"></script>
+    <script is:inline src="/vendor/InertiaPlugin.min.js"></script>
+    <script is:inline src="/vendor/ScrollTrigger.min.js"></script>
+    <script is:inline src="/vendor/SplitText.min.js"></script>
+    <script is:inline src="/vendor/CustomEase.min.js"></script>
+    <script is:inline src="/vendor/Observer.min.js"></script>
+    <script is:inline src="/vendor/lenis.min.js"></script>
+    <script is:inline src="/vendor/hls.min.js"></script>
+    <script is:inline src="/js/main.js"></script>
   </body>
 </html>
