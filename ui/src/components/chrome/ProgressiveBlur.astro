@@ -34,11 +34,8 @@
     opacity: 1;
   }
 
-  /* In the frameless app, sit below the custom title bar. */
-  html.is-tauri .progressive-blur {
-    top: var(--titlebar-h);
-  }
-
+  /* Spans from the very top (y=0) so it runs seamlessly behind the transparent
+     title bar and the nav below it -- no unblurred strip at the title bar. */
   .progressive-blur__layer {
     width: 100%;
     height: 100%;
