@@ -1,9 +1,9 @@
 //! CommandCenter backend -- the Tauri app and the command surface the UI invokes.
 //!
-//! `list_projects` is still placeholder data pending the store lane. The
-//! process engine (PTY supervision via `engine::Supervisor`) is wired below:
-//! `spawn_process` / `list_processes` / friends are real, backed by
-//! `portable-pty`.
+//! `list_projects` and friends are backed by the SQLite-backed `store`
+//! module. The process engine (PTY supervision via `engine::Supervisor`) is
+//! wired below: `spawn_process` / `list_processes` / friends are real,
+//! backed by `portable-pty`.
 
 mod credentials;
 mod engine;
