@@ -91,7 +91,7 @@
       $wsStatus.set("connecting");
       let ws: WebSocket;
       try {
-        ws = new WebSocket(`ws://127.0.0.1:${port}/ws/events`);
+        ws = new WebSocket(`ws://localhost:${port}/ws/events`);
       } catch (e) {
         $wsStatus.set("closed");
         scheduleWsReconnect(port);
@@ -158,7 +158,7 @@
       }
       $webtransportStatus.set("connecting");
       try {
-        const wt = new WebTransport(`https://127.0.0.1:${port}/`, {
+        const wt = new WebTransport(`https://localhost:${port}/`, {
           serverCertificateHashes: [{ algorithm: "sha-256", value: hexToBytes(fingerprintHex) }],
         });
         await wt.ready;

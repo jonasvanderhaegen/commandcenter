@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!--
+    Allow the WKWebView to reach cc-mcp's loopback event bus over the insecure
+    ws:// (and the WebTransport https:// PoC). macOS App Transport Security
+    otherwise blocks non-TLS loads, which surfaces as "the resource was
+    requested insecurely" and silently drops the WebSocket. NSAllowsLocalNetworking
+    is the targeted exception for localhost / reserved-range hosts -- far narrower
+    than NSAllowsArbitraryLoads, and this app only ever talks to its own loopback.
+    Merged into the generated Info.plist by tauri-build (dev and release).
+  -->
+  <key>NSAppTransportSecurity</key>
+  <dict>
+    <key>NSAllowsLocalNetworking</key>
+    <true/>
+  </dict>
+</dict>
+</plist>
