@@ -1,0 +1,251 @@
+---
+// Frontend client for cc-mcp's event bus (src-tauri/crates/cc-mcp/src/events.rs).
+// WebSocket is the primary transport -- it works in every webview CommandCenter
+// ships on. WebTransport connects in parallel as a proof of concept; whether
+// it actually establishes depends on the webview's WebTransport support (Chrome
+// yes, WKWebView/Safari uncertain as of this writing) and on the self-signed
+// cert's fingerprint being pinned correctly via serverCertificateHashes.
+//
+// No feature publishes to the bus yet -- this only wires up the transport and
+// the subscribe/unsubscribe API (window.__ccEvents) for whatever uses it next.
+// The only event flowing today is cc-mcp's own 5s "heartbeat", useful for
+// confirming the wiring is alive without a real feature yet.
+---
+
+<script>
+  import { $wsClient, $wsStatus, $webtransportClient, $webtransportStatus } from "../../stores/eventBus";
+
+  // A regular (Vite-bundled, module-scoped) script rather than is:inline:
+  // ES modules only ever evaluate once per URL, so this naturally survives
+  // Astro view transitions without needing the astro:page-load re-wiring
+  // dance the sidebar/theme scripts need -- exactly right for a singleton
+  // connection that should never be re-created on navigation.
+  if (!window.__ccEvents) {
+    const DEFAULT_WS_PORT = 7080;
+    const DEFAULT_WEBTRANSPORT_PORT = 7443;
+    const RECONNECT_DELAY_MS = 2000;
+
+    type Handler = (data: unknown, topic: string) => void;
+    const handlers: Record<string, Set<Handler>> = {};
+    let wsSubscribedTopics: Record<string, true> = {}; // mirrors what the WS connection has told the server
+
+    function dispatch(topic: string, data: unknown) {
+      const set = handlers[topic];
+      if (!set) return;
+      set.forEach((fn) => {
+        try {
+          fn(data, topic);
+        } catch (e) {
+          console.error(`[cc-events] handler for topic '${topic}' threw:`, e);
+        }
+      });
+    }
+
+    function hasHandlers(topic: string) {
+      return !!(handlers[topic] && handlers[topic].size > 0);
+    }
+
+    function subscribe(topic: string, fn: Handler) {
+      if (!handlers[topic]) handlers[topic] = new Set();
+      handlers[topic].add(fn);
+      syncWsSubscription(topic);
+      handlersChanged();
+      return () => unsubscribeHandler(topic, fn);
+    }
+
+    function unsubscribeHandler(topic: string, fn: Handler) {
+      const set = handlers[topic];
+      if (!set) return;
+      set.delete(fn);
+      if (set.size === 0) delete handlers[topic];
+      syncWsSubscription(topic);
+      handlersChanged();
+    }
+
+    function handlersChanged() {
+      document.dispatchEvent(new CustomEvent("cc-events-handlers-changed"));
+    }
+
+    // --- WebSocket: primary transport -----------------------------------
+
+    function wsSend(obj: unknown) {
+      const ws = $wsClient.get();
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify(obj));
+      }
+    }
+
+    function syncWsSubscription(topic: string) {
+      const want = hasHandlers(topic);
+      const have = !!wsSubscribedTopics[topic];
+      if (want && !have) {
+        wsSubscribedTopics[topic] = true;
+        wsSend({ type: "subscribe", topic });
+      } else if (!want && have) {
+        delete wsSubscribedTopics[topic];
+        wsSend({ type: "unsubscribe", topic });
+      }
+    }
+
+    function connectWs(port: number) {
+      $wsStatus.set("connecting");
+      let ws: WebSocket;
+      try {
+        ws = new WebSocket(`ws://127.0.0.1:${port}/ws/events`);
+      } catch (e) {
+        $wsStatus.set("closed");
+        scheduleWsReconnect(port);
+        return;
+      }
+      $wsClient.set(ws);
+
+      ws.addEventListener("open", () => {
+        $wsStatus.set("connected");
+        // Re-declare every topic with a live handler -- a fresh connection
+        // has no memory of what the previous one was subscribed to.
+        wsSubscribedTopics = {};
+        Object.keys(handlers).forEach((topic) => {
+          if (hasHandlers(topic)) {
+            wsSubscribedTopics[topic] = true;
+            wsSend({ type: "subscribe", topic });
+          }
+        });
+      });
+
+      ws.addEventListener("message", (e) => {
+        let event: { topic?: unknown; data?: unknown };
+        try {
+          event = JSON.parse(e.data);
+        } catch (err) {
+          return;
+        }
+        if (event && typeof event.topic === "string") dispatch(event.topic, event.data);
+      });
+
+      ws.addEventListener("close", () => {
+        $wsStatus.set("closed");
+        $wsClient.set(null);
+        scheduleWsReconnect(port);
+      });
+
+      ws.addEventListener("error", () => {
+        /* "close" fires right after; reconnect handled there */
+      });
+    }
+
+    function scheduleWsReconnect(port: number) {
+      setTimeout(() => connectWs(port), RECONNECT_DELAY_MS);
+    }
+
+    // --- WebTransport: experimental secondary transport ------------------
+    // Delivers into the same `handlers` registry as WS. Redundant delivery
+    // while both transports happen to be connected is expected -- topic
+    // handlers on an event bus should be idempotent regardless of transport
+    // count, so this isn't treated as a bug to engineer around here.
+
+    function hexToBytes(hex: string) {
+      const bytes = new Uint8Array(hex.length / 2);
+      for (let i = 0; i < bytes.length; i++) {
+        bytes[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+      }
+      return bytes;
+    }
+
+    async function connectWebTransport(port: number, fingerprintHex: string) {
+      if (typeof WebTransport === "undefined") {
+        $webtransportStatus.set("unsupported");
+        return;
+      }
+      $webtransportStatus.set("connecting");
+      try {
+        const wt = new WebTransport(`https://127.0.0.1:${port}/`, {
+          serverCertificateHashes: [{ algorithm: "sha-256", value: hexToBytes(fingerprintHex) }],
+        });
+        await wt.ready;
+        $webtransportClient.set(wt);
+        $webtransportStatus.set("connected");
+
+        const stream = await wt.createBidirectionalStream();
+        const writer = stream.writable.getWriter();
+        const encoder = new TextEncoder();
+
+        let wtSubscribedTopics: Record<string, true> = {};
+        function syncWtSubscription(topic: string) {
+          const want = hasHandlers(topic);
+          const have = !!wtSubscribedTopics[topic];
+          if (want && !have) {
+            wtSubscribedTopics[topic] = true;
+            writer.write(encoder.encode(JSON.stringify({ type: "subscribe", topic }) + "\n"));
+          } else if (!want && have) {
+            delete wtSubscribedTopics[topic];
+            writer.write(encoder.encode(JSON.stringify({ type: "unsubscribe", topic }) + "\n"));
+          }
+        }
+        Object.keys(handlers).forEach(syncWtSubscription);
+        // Re-run whenever a NEW subscribe()/unsubscribe() happens: cheap to
+        // just re-diff every handler change rather than build a second
+        // pub/sub layer on top of the first.
+        document.addEventListener("cc-events-handlers-changed", () => {
+          Object.keys(handlers).forEach(syncWtSubscription);
+        });
+
+        const reader = stream.readable.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        while (true) {
+          const result = await reader.read();
+          if (result.done) break;
+          buffer += decoder.decode(result.value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() ?? "";
+          lines.forEach((line) => {
+            if (!line) return;
+            let event: { topic?: unknown; data?: unknown };
+            try {
+              event = JSON.parse(line);
+            } catch (err) {
+              return;
+            }
+            if (event && typeof event.topic === "string") dispatch(event.topic, event.data);
+          });
+        }
+        $webtransportStatus.set("closed");
+        $webtransportClient.set(null);
+      } catch (e) {
+        console.warn("[cc-events] WebTransport unavailable:", e);
+        $webtransportStatus.set("closed");
+        $webtransportClient.set(null);
+      }
+    }
+
+    // --- bootstrap ---------------------------------------------------------
+
+    connectWs(DEFAULT_WS_PORT);
+
+    const tauri = window.__TAURI__ && window.__TAURI__.core;
+    if (tauri) {
+      tauri
+        .invoke("cc_event_bus_info")
+        .then((info) => {
+          const { webtransport_port, webtransport_fingerprint } = info as {
+            webtransport_port?: number;
+            webtransport_fingerprint?: string;
+          };
+          if (webtransport_fingerprint) {
+            connectWebTransport(webtransport_port || DEFAULT_WEBTRANSPORT_PORT, webtransport_fingerprint);
+          } else {
+            $webtransportStatus.set("unsupported");
+          }
+        })
+        .catch(() => {
+          $webtransportStatus.set("unsupported");
+        });
+    }
+
+    window.__ccEvents = {
+      subscribe,
+      unsubscribe: unsubscribeHandler,
+      status: () => ({ ws: $wsStatus.get(), webtransport: $webtransportStatus.get() }),
+    };
+  }
+</script>

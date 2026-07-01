@@ -4,10 +4,15 @@ node_modules/
 # Build output
 ui/dist/
 /src-tauri/target/
+/src-tauri/crates/*/target/
 /src-tauri/gen/
 
 # Astro generated
 ui/.astro/
+
+# Playwright
+ui/test-results/
+ui/playwright-report/
 
 # Vite+ local hooks dir (lefthook is the source of truth)
 .vite-hooks/

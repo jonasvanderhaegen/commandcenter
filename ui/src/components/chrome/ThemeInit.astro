@@ -61,6 +61,17 @@
 
     apply(currentMode());
 
+    // Astro's view transitions can wipe attributes/classes that were set on
+    // <html> dynamically (not part of the static template) rather than
+    // preserving them across a swap -- confirmed empirically: data-theme
+    // was observed cleared after a client-side navigation even though
+    // localStorage still had the right value. Re-applying on every
+    // astro:page-load (which fires for the first load too, not just later
+    // transitions) is the defensive fix, regardless of the exact mechanism.
+    document.addEventListener("astro:page-load", function () {
+      apply(currentMode());
+    });
+
     mql.addEventListener("change", function () {
       if (currentMode() === "system") apply("system");
     });
@@ -94,6 +105,9 @@
     }
 
     apply(isCollapsed());
+    document.addEventListener("astro:page-load", function () {
+      apply(isCollapsed());
+    });
 
     window.__ccSidebar = {
       toggle: function () {

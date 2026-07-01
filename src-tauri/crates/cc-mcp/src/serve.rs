@@ -24,9 +24,17 @@ pub async fn serve_stdio() -> Result<()> {
     Ok(())
 }
 
-/// Serve over HTTP (streamable MCP transport) at `http://{bind}:{port}/mcp`.
-/// Runs until the listener errors; intended to be spawned on its own task.
+/// Serve over HTTP (streamable MCP transport at `/mcp`, WebSocket event bus
+/// at `/ws/events`). Runs until the listener errors; intended to be spawned
+/// on its own task.
 pub async fn serve_http(bind: &str, port: u16) -> Result<()> {
+    serve_http_with_bus(bind, port, crate::EventBus::default()).await
+}
+
+/// Same as [`serve_http`], but with a caller-supplied [`EventBus`] so the
+/// HTTP and WebTransport listeners can share one bus (see
+/// [`serve_webtransport`]).
+pub async fn serve_http_with_bus(bind: &str, port: u16, bus: crate::EventBus) -> Result<()> {
     use rmcp::transport::streamable_http_server::{
         StreamableHttpServerConfig, StreamableHttpService, session::local::LocalSessionManager,
     };
@@ -41,15 +49,36 @@ pub async fn serve_http(bind: &str, port: u16) -> Result<()> {
     let addr: std::net::SocketAddr = format!("{bind}:{port}")
         .parse()
         .context("invalid bind/port")?;
-    let router = axum::Router::new().nest_service("/mcp", service);
+    let router = axum::Router::new()
+        .nest_service("/mcp", service)
+        .route(
+            "/ws/events",
+            axum::routing::get(crate::ws::ws_events_handler),
+        )
+        .with_state(bus);
     let listener = tokio::net::TcpListener::bind(addr)
         .await
         .with_context(|| format!("failed to bind {addr}"))?;
 
-    tracing::info!("cc-mcp listening on http://{addr}/mcp");
+    tracing::info!("cc-mcp listening on http://{addr}/mcp (events: ws://{addr}/ws/events)");
     axum::serve(listener, router)
         .await
         .context("cc-mcp http server error")?;
 
     Ok(())
+}
+
+/// WebTransport PoC event-bus endpoint; see [`crate::webtransport`] for the
+/// protocol and self-signed-cert caveats. Intended to be spawned on its own
+/// task alongside [`serve_http_with_bus`], sharing the same [`EventBus`] so
+/// events published by either transport reach subscribers on both. Loops
+/// forever on success; `on_ready` delivers the cert fingerprint once the
+/// endpoint is actually listening.
+pub async fn serve_webtransport(
+    bind: &str,
+    port: u16,
+    bus: crate::EventBus,
+    on_ready: Option<tokio::sync::oneshot::Sender<String>>,
+) -> Result<()> {
+    crate::webtransport::serve_webtransport(bind, port, bus, on_ready).await
 }

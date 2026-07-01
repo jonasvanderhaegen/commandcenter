@@ -4,6 +4,7 @@ import AppSidebar from "../components/chrome/AppSidebar.astro";
 import SearchModal from "../components/chrome/SearchModal.astro";
 import GridOverlay from "../components/chrome/GridOverlay.astro";
 import ThemeInit from "../components/chrome/ThemeInit.astro";
+import EventBusInit from "../components/chrome/EventBusInit.astro";
 
 type Props = {
   title?: string;
@@ -22,7 +23,8 @@ const { title = "CommandCenter" } = Astro.props;
     <ClientRouter />
   </head>
   <body class="app-shell">
-    <AppSidebar transition:persist />
+    <EventBusInit />
+    <AppSidebar />
     <SearchModal />
     <GridOverlay />
     <main class="app-shell__content">

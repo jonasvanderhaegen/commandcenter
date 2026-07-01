@@ -30,6 +30,7 @@ rand = "0.8"
 zeroize = { version = "1", features = ["derive"] }
 base64 = "0.22"
 anyhow = "1"
+sysinfo = "0.32"
 
 # macOS-only: round the frameless transparent window's corners via the native
 # content-view layer (see round_window_corners in lib.rs). objc2 crates are

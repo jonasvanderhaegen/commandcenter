@@ -681,45 +681,21 @@
 
 <script is:inline>
   (function () {
-    var toggle = document.getElementById("sidebarToggle");
-    var backdrop = document.getElementById("sidebarBackdrop");
     var html = document.documentElement;
 
     function setSidebarOpen(open) {
       html.classList.toggle("sidebar-open", open);
+      var toggle = document.getElementById("sidebarToggle");
       if (toggle) toggle.setAttribute("aria-expanded", String(open));
     }
 
-    if (toggle) {
-      toggle.addEventListener("click", function () {
-        setSidebarOpen(!html.classList.contains("sidebar-open"));
-      });
-    }
-
-    document.querySelectorAll("[data-sidebar-subnav-toggle]").forEach(function (btn) {
-      btn.addEventListener("click", function (e) {
-        e.preventDefault();
-        var group = btn.closest("[data-nav-group]");
-        if (!group) return;
-        group.dataset.expanded = String(group.dataset.expanded !== "true");
-      });
-    });
-
-    var collapseBtn = document.getElementById("sidebarCollapse");
     function syncCollapseButton() {
+      var collapseBtn = document.getElementById("sidebarCollapse");
       if (!collapseBtn) return;
       var collapsed = window.__ccSidebar && window.__ccSidebar.get();
       collapseBtn.setAttribute("aria-expanded", String(!collapsed));
       collapseBtn.setAttribute("aria-label", collapsed ? "Expand sidebar" : "Collapse sidebar");
     }
-    if (collapseBtn) {
-      collapseBtn.addEventListener("click", function () {
-        if (window.__ccSidebar) window.__ccSidebar.toggle();
-        syncCollapseButton();
-      });
-    }
-    document.addEventListener("cc-sidebar-change", syncCollapseButton);
-    syncCollapseButton();
 
     function syncActiveLink() {
       var path = window.location.pathname;
@@ -729,41 +705,14 @@
         link.classList.toggle("sidebar__item--active", active);
       });
     }
-    syncActiveLink();
-    document.addEventListener("astro:after-swap", syncActiveLink);
-    if (backdrop) {
-      backdrop.addEventListener("click", function () {
-        setSidebarOpen(false);
-      });
-    }
-
-    var accountToggle = document.getElementById("accountToggle");
-    var accountMenu = document.getElementById("accountMenu");
-    if (accountToggle && accountMenu) {
-      // Menu opens on hover/focus (CSS); this just keeps aria-expanded in sync.
-      var wrap = accountToggle.closest(".sidebar__account");
-      if (wrap) {
-        wrap.addEventListener("mouseenter", function () {
-          accountToggle.setAttribute("aria-expanded", "true");
-        });
-        wrap.addEventListener("mouseleave", function () {
-          accountToggle.setAttribute("aria-expanded", "false");
-        });
-      }
-    }
-
-    // Appearance switch: reflects the mode ThemeInit already applied, and
-    // calls window.__ccTheme.set() (defined in ThemeInit.astro) on click.
-    var themeButtons = Array.prototype.slice.call(
-      document.querySelectorAll("[data-theme-option]")
-    );
-    var themeSwitch = document.querySelector(".sidebar__theme-switch");
-    var themeOrder = themeButtons.map(function (btn) {
-      return btn.dataset.themeOption;
-    });
 
     function syncThemeButtons() {
       var mode = (window.__ccTheme && window.__ccTheme.get()) || "system";
+      var themeButtons = Array.prototype.slice.call(document.querySelectorAll("[data-theme-option]"));
+      var themeSwitch = document.querySelector(".sidebar__theme-switch");
+      var themeOrder = themeButtons.map(function (btn) {
+        return btn.dataset.themeOption;
+      });
       var index = Math.max(themeOrder.indexOf(mode), 0);
       themeButtons.forEach(function (btn) {
         btn.setAttribute("aria-checked", String(btn.dataset.themeOption === mode));
@@ -771,21 +720,109 @@
       if (themeSwitch) themeSwitch.style.setProperty("--sidebar-theme-index", String(index));
     }
 
-    themeButtons.forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        if (window.__ccTheme) window.__ccTheme.set(btn.dataset.themeOption);
-        syncThemeButtons();
-      });
-    });
+    // The sidebar isn't actually persisted across Astro view transitions
+    // (transition:persist on a multi-root component doesn't propagate to
+    // every top-level element -- verified empirically, not by assumption:
+    // zero elements ever carried data-astro-transition-persist). Every
+    // navigation replaces this markup wholesale, so per-element listeners
+    // must be re-attached each time; wire() re-runs on astro:page-load for
+    // exactly that reason and is safe to call repeatedly since it only ever
+    // touches the DOM nodes present *right now*.
+    function wire() {
+      var toggle = document.getElementById("sidebarToggle");
+      var backdrop = document.getElementById("sidebarBackdrop");
 
-    document.addEventListener("cc-theme-change", syncThemeButtons);
-    syncThemeButtons();
-
-    document.addEventListener("keydown", function (e) {
-      if (e.key === "Escape") {
-        setSidebarOpen(false);
-        if (document.activeElement) document.activeElement.blur();
+      // Per-element `dataset.wired` guards: astro:page-load fires on the
+      // very first page load too, not just later transitions, so wire()
+      // legitimately runs twice back to back on first load (once from the
+      // explicit call below, once from the event). Without these guards
+      // that double-attaches every click listener -- e.g. the collapse
+      // button silently no-ops, since toggling twice cancels itself out.
+      // A freshly-navigated-in element never has the flag set, so this
+      // doesn't block real re-wiring after a genuine DOM replacement.
+      if (toggle && toggle.dataset.wired !== "true") {
+        toggle.dataset.wired = "true";
+        toggle.addEventListener("click", function () {
+          setSidebarOpen(!html.classList.contains("sidebar-open"));
+        });
       }
-    });
+      if (backdrop && backdrop.dataset.wired !== "true") {
+        backdrop.dataset.wired = "true";
+        backdrop.addEventListener("click", function () {
+          setSidebarOpen(false);
+        });
+      }
+
+      document.querySelectorAll("[data-sidebar-subnav-toggle]").forEach(function (btn) {
+        if (btn.dataset.wired === "true") return;
+        btn.dataset.wired = "true";
+        btn.addEventListener("click", function (e) {
+          e.preventDefault();
+          var group = btn.closest("[data-nav-group]");
+          if (!group) return;
+          group.dataset.expanded = String(group.dataset.expanded !== "true");
+        });
+      });
+
+      var collapseBtn = document.getElementById("sidebarCollapse");
+      if (collapseBtn && collapseBtn.dataset.wired !== "true") {
+        collapseBtn.dataset.wired = "true";
+        collapseBtn.addEventListener("click", function () {
+          if (window.__ccSidebar) window.__ccSidebar.toggle();
+          syncCollapseButton();
+        });
+      }
+      syncCollapseButton();
+      syncActiveLink();
+
+      var accountToggle = document.getElementById("accountToggle");
+      var accountMenu = document.getElementById("accountMenu");
+      if (accountToggle && accountMenu && accountToggle.dataset.wired !== "true") {
+        accountToggle.dataset.wired = "true";
+        // Menu opens on hover/focus (CSS); this just keeps aria-expanded in sync.
+        var wrap = accountToggle.closest(".sidebar__account");
+        if (wrap) {
+          wrap.addEventListener("mouseenter", function () {
+            accountToggle.setAttribute("aria-expanded", "true");
+          });
+          wrap.addEventListener("mouseleave", function () {
+            accountToggle.setAttribute("aria-expanded", "false");
+          });
+        }
+      }
+
+      // Appearance switch: reflects the mode ThemeInit already applied, and
+      // calls window.__ccTheme.set() (defined in ThemeInit.astro) on click.
+      document.querySelectorAll("[data-theme-option]").forEach(function (btn) {
+        if (btn.dataset.wired === "true") return;
+        btn.dataset.wired = "true";
+        btn.addEventListener("click", function () {
+          if (window.__ccTheme) window.__ccTheme.set(btn.dataset.themeOption);
+          syncThemeButtons();
+        });
+      });
+      syncThemeButtons();
+    }
+
+    wire();
+    document.addEventListener("astro:page-load", wire);
+
+    // Document-level listeners must only be attached once -- unlike wire()'s
+    // per-element listeners, these survive on `document` itself across
+    // navigations, so re-attaching on every script run would pile up
+    // duplicates. The handlers above already re-query the DOM fresh on each
+    // invocation, so a single registration stays correct forever.
+    if (!window.__ccSidebarDocListenersWired) {
+      window.__ccSidebarDocListenersWired = true;
+      document.addEventListener("cc-sidebar-change", syncCollapseButton);
+      document.addEventListener("astro:after-swap", syncActiveLink);
+      document.addEventListener("cc-theme-change", syncThemeButtons);
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape") {
+          setSidebarOpen(false);
+          if (document.activeElement) document.activeElement.blur();
+        }
+      });
+    }
   })();
 </script>

@@ -6,6 +6,7 @@
 //! supervision) is the next layer, not built here.
 
 mod credentials;
+mod single_instance;
 mod verify;
 
 use credentials::{CredentialStore, CredentialSummary};
@@ -168,12 +169,45 @@ fn round_window_corners(window: &tauri::WebviewWindow, radius: f64) {
     }
 }
 
-/// Port the embedded cc-mcp stub server listens on (loopback only).
+/// Ports the embedded cc-mcp stub server listens on (loopback only).
 const CC_MCP_PORT: u16 = 7080;
+const CC_MCP_WEBTRANSPORT_PORT: u16 = 7443;
 
-/// Start the cc-mcp stub MCP server on its own thread/runtime, independent of
-/// Tauri's own async runtime. Loopback-only HTTP; stdio isn't usable inside a
-/// windowed app since stdio is owned by the GUI process, not an MCP client.
+/// Set once the WebTransport endpoint is actually listening (see
+/// `spawn_cc_mcp`). `None` means either it hasn't started yet or it failed
+/// to start -- the frontend command below treats both the same way (skip
+/// WebTransport, WebSocket still works).
+static WEBTRANSPORT_FINGERPRINT: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+
+#[derive(Serialize)]
+struct EventBusInfo {
+    ws_port: u16,
+    webtransport_port: u16,
+    /// SHA-256 fingerprint of the WebTransport endpoint's self-signed cert,
+    /// hex-formatted, for `serverCertificateHashes` pinning in the frontend
+    /// `WebTransport` constructor. `None` until the endpoint is ready.
+    webtransport_fingerprint: Option<String>,
+}
+
+/// Connection info the frontend needs to reach the event bus: ports plus
+/// (once ready) the WebTransport cert fingerprint for pinning.
+#[tauri::command]
+fn cc_event_bus_info() -> EventBusInfo {
+    EventBusInfo {
+        ws_port: CC_MCP_PORT,
+        webtransport_port: CC_MCP_WEBTRANSPORT_PORT,
+        webtransport_fingerprint: WEBTRANSPORT_FINGERPRINT.get().cloned(),
+    }
+}
+
+/// Start the cc-mcp stub MCP server (HTTP + WebSocket events) and the
+/// WebTransport PoC on their own thread/runtime, independent of Tauri's own
+/// async runtime. Loopback-only; stdio isn't usable inside a windowed app
+/// since stdio is owned by the GUI process, not an MCP client. Both
+/// listeners share one `EventBus` so an event published via either
+/// transport reaches subscribers on both. A periodic heartbeat event keeps
+/// the bus non-empty so the frontend wiring has something to observe before
+/// any real feature publishes to it.
 fn spawn_cc_mcp() {
     std::thread::Builder::new()
         .name("cc-mcp".into())
@@ -185,11 +219,58 @@ fn spawn_cc_mcp() {
                     return;
                 }
             };
-            if let Err(err) = rt.block_on(cc_mcp::serve_http("127.0.0.1", CC_MCP_PORT)) {
-                eprintln!("cc-mcp: server error: {err}");
-            }
+            rt.block_on(async {
+                let bus = cc_mcp::EventBus::default();
+
+                let (ready_tx, ready_rx) = tokio::sync::oneshot::channel();
+                tokio::spawn(async move {
+                    if let Ok(fingerprint) = ready_rx.await {
+                        let _ = WEBTRANSPORT_FINGERPRINT.set(fingerprint);
+                    }
+                });
+
+                let heartbeat_bus = bus.clone();
+                tokio::spawn(async move {
+                    let mut ticker = tokio::time::interval(std::time::Duration::from_secs(5));
+                    loop {
+                        ticker.tick().await;
+                        heartbeat_bus
+                            .publish("heartbeat", serde_json::json!({ "at": unix_epoch_secs() }));
+                    }
+                });
+
+                let http =
+                    cc_mcp::serve::serve_http_with_bus("127.0.0.1", CC_MCP_PORT, bus.clone());
+                let webtransport = cc_mcp::serve_webtransport(
+                    "127.0.0.1",
+                    CC_MCP_WEBTRANSPORT_PORT,
+                    bus,
+                    Some(ready_tx),
+                );
+                tokio::select! {
+                    result = http => {
+                        if let Err(err) = result {
+                            eprintln!("cc-mcp: http server error: {err}");
+                        }
+                    }
+                    result = webtransport => {
+                        if let Err(err) = result {
+                            eprintln!("cc-mcp: webtransport server error: {err}");
+                        }
+                    }
+                }
+            });
         })
         .expect("failed to spawn cc-mcp thread");
+}
+
+/// No `chrono`/`time` dependency in this crate yet -- SystemTime is enough
+/// for a heartbeat timestamp nobody parses back into a real date type.
+fn unix_epoch_secs() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0)
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -197,6 +278,13 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .setup(|_app| {
+            // Must complete before spawn_cc_mcp(): if a previous instance is
+            // still alive when this one tries to bind cc-mcp's fixed ports
+            // (7080/7443), the bind fails outright.
+            if let Ok(dir) = _app.path().app_data_dir() {
+                single_instance::enforce_single_instance(&dir);
+            }
+
             spawn_cc_mcp();
 
             #[cfg(target_os = "macos")]
@@ -218,7 +306,8 @@ pub fn run() {
             list_credentials,
             import_credential_from_path,
             update_credential_from_path,
-            verify_credential
+            verify_credential,
+            cc_event_bus_info
         ])
         .run(tauri::generate_context!())
         .expect("error while running CommandCenter");
