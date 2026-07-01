@@ -1,27 +1,26 @@
 //! CommandCenter backend -- the Tauri app and the command surface the UI invokes.
 //!
-//! This is a skeleton: `list_projects` / `list_processes` return placeholder
-//! data, and the mutating verbs (`spawn_process`, `spawn_agent`, ...) are
-//! sketched in docs/ARCHITECTURE.md but not wired. The process engine (PTY
-//! supervision) is the next layer, not built here.
+//! `list_projects` is still placeholder data pending the store lane. The
+//! process engine (PTY supervision via `engine::Supervisor`) is wired below:
+//! `spawn_process` / `list_processes` / friends are real, backed by
+//! `portable-pty`.
 
 mod credentials;
+mod engine;
 mod single_instance;
 mod store;
 mod verify;
 
 use credentials::{CredentialStore, CredentialSummary};
+use engine::{
+    close_process, get_process_output, list_processes, resize_process, restart_process,
+    send_process_input, spawn_process, stop_process, Supervisor, TauriEventSink,
+};
 use serde::Serialize;
+use std::sync::Arc;
 use store::{CommandDef, Project, ProjectStore};
 use tauri::Manager;
 use verify::VerifyResult;
-
-#[derive(Serialize)]
-pub struct Process {
-    pub id: String,
-    pub name: String,
-    pub status: String,
-}
 
 /// Enumerate projects from the SQLite store.
 #[tauri::command]
@@ -78,17 +77,6 @@ fn delete_command_def(app: tauri::AppHandle, command_def_id: String) -> Result<(
     store
         .delete_command_def(&command_def_id)
         .map_err(|e| e.to_string())
-}
-
-/// Processes within a project. Placeholder until the engine exists.
-#[tauri::command]
-fn list_processes(project_id: String) -> Vec<Process> {
-    let _ = project_id;
-    vec![Process {
-        id: "shell".into(),
-        name: "zsh".into(),
-        status: "idle".into(),
-    }]
 }
 
 /// Provider tokens (Claude, Codex, ...) that CommandCenter can spawn sessions
@@ -331,6 +319,9 @@ pub fn run() {
 
             spawn_cc_mcp();
 
+            let sink = Arc::new(TauriEventSink(_app.handle().clone()));
+            _app.manage(Supervisor::new(sink));
+
             #[cfg(target_os = "macos")]
             {
                 use tauri::Manager;
@@ -349,6 +340,13 @@ pub fn run() {
             save_command_def,
             delete_command_def,
             list_processes,
+            spawn_process,
+            get_process_output,
+            send_process_input,
+            resize_process,
+            stop_process,
+            restart_process,
+            close_process,
             save_credential,
             update_credential,
             delete_credential,

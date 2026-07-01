@@ -41,9 +41,17 @@ anyhow = "1"
 sysinfo = "0.32"
 rusqlite = { version = "0.32", features = ["bundled"] }
 
+# PTY-backed process engine (spawn/stream/resize/stop) -- lane engine-pty.
+portable-pty = "0.9"
+
 # macOS-only: round the frameless transparent window's corners via the native
 # content-view layer (see round_window_corners in lib.rs). objc2 crates are
 # already in the tree (Tauri uses them), so this adds no new versions.
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2-app-kit = { version = "0.3.2", features = ["NSWindow", "NSView"] }
 objc2-quartz-core = { version = "0.3.2", features = ["CALayer"] }
+
+# unix-only: send SIGTERM (graceful stop) before escalating to kill in the
+# process engine's stop_process.
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
