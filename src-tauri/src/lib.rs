@@ -6,10 +6,12 @@
 //! supervision) is the next layer, not built here.
 
 mod credentials;
+mod verify;
 
-use credentials::CredentialStore;
+use credentials::{CredentialStore, CredentialSummary};
 use serde::Serialize;
 use tauri::Manager;
+use verify::VerifyResult;
 
 #[derive(Serialize)]
 pub struct Project {
@@ -46,26 +48,101 @@ fn list_processes(project_id: String) -> Vec<Process> {
 
 /// Provider tokens (Claude, Codex, ...) that CommandCenter can spawn sessions
 /// with. The token value itself never crosses the IPC boundary to the
-/// frontend -- only presence/absence does.
+/// frontend -- only id/provider/account do. Neither provider nor account is
+/// unique on its own (multiple accounts per provider, or in principle
+/// multiple tokens per account); each entry is addressed by its own id.
 #[tauri::command]
-fn save_credential(app: tauri::AppHandle, provider: String, token: String) -> Result<(), String> {
+fn save_credential(
+    app: tauri::AppHandle,
+    provider: String,
+    account: String,
+    token: String,
+    expires_at: Option<String>,
+) -> Result<String, String> {
     let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
     let store = CredentialStore::open(&dir).map_err(|e| e.to_string())?;
-    store.save(&provider, &token).map_err(|e| e.to_string())
+    store
+        .add(&provider, &account, &token, expires_at.as_deref())
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-fn has_credential(app: tauri::AppHandle, provider: String) -> Result<bool, String> {
+fn update_credential(
+    app: tauri::AppHandle,
+    id: String,
+    token: String,
+    expires_at: Option<String>,
+) -> Result<(), String> {
     let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
     let store = CredentialStore::open(&dir).map_err(|e| e.to_string())?;
-    store.has(&provider).map_err(|e| e.to_string())
+    store
+        .update_token(&id, &token, expires_at.as_deref())
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-fn delete_credential(app: tauri::AppHandle, provider: String) -> Result<(), String> {
+fn delete_credential(app: tauri::AppHandle, id: String) -> Result<(), String> {
     let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
     let store = CredentialStore::open(&dir).map_err(|e| e.to_string())?;
-    store.delete(&provider).map_err(|e| e.to_string())
+    store.delete(&id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn list_credentials(app: tauri::AppHandle) -> Result<Vec<CredentialSummary>, String> {
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    let store = CredentialStore::open(&dir).map_err(|e| e.to_string())?;
+    store.list().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn import_credential_from_path(
+    app: tauri::AppHandle,
+    provider: String,
+    account: String,
+    path: String,
+    expires_at: Option<String>,
+) -> Result<String, String> {
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    let store = CredentialStore::open(&dir).map_err(|e| e.to_string())?;
+    store
+        .add_from_file(
+            &provider,
+            &account,
+            std::path::Path::new(&path),
+            expires_at.as_deref(),
+        )
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn update_credential_from_path(
+    app: tauri::AppHandle,
+    id: String,
+    path: String,
+    expires_at: Option<String>,
+) -> Result<(), String> {
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    let store = CredentialStore::open(&dir).map_err(|e| e.to_string())?;
+    store
+        .update_token_from_file(&id, std::path::Path::new(&path), expires_at.as_deref())
+        .map_err(|e| e.to_string())
+}
+/// Load the decrypted token for `id` internally and check it against the
+/// provider's own API (a cheap read-only endpoint, never a paid call).
+/// Only the outcome/detail cross back to the frontend -- the token itself
+/// never leaves this function.
+#[tauri::command]
+async fn verify_credential(app: tauri::AppHandle, id: String) -> Result<VerifyResult, String> {
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    let store = CredentialStore::open(&dir).map_err(|e| e.to_string())?;
+    let entries = store.list().map_err(|e| e.to_string())?;
+    let Some(entry) = entries.into_iter().find(|e| e.id == id) else {
+        return Err(format!("no stored credential with id '{id}'"));
+    };
+    let Some(token) = store.load(&id).map_err(|e| e.to_string())? else {
+        return Err(format!("no stored credential with id '{id}'"));
+    };
+    Ok(verify::verify_provider_token(&entry.provider, &token).await)
 }
 
 /// Round the macOS window's corners. The window is frameless + transparent, so
@@ -118,6 +195,7 @@ fn spawn_cc_mcp() {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .setup(|_app| {
             spawn_cc_mcp();
 
@@ -135,8 +213,12 @@ pub fn run() {
             list_projects,
             list_processes,
             save_credential,
-            has_credential,
-            delete_credential
+            update_credential,
+            delete_credential,
+            list_credentials,
+            import_credential_from_path,
+            update_credential_from_path,
+            verify_credential
         ])
         .run(tauri::generate_context!())
         .expect("error while running CommandCenter");

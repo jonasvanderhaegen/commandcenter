@@ -115,10 +115,40 @@ const { sections, currentSlug } = Astro.props;
   .docs-nav__items {
     list-style: none;
     margin: 0;
-    padding: 0;
+    padding: 0 0 0 14px;
     display: flex;
     flex-direction: column;
     gap: 1px;
+  }
+
+  .docs-nav__items li {
+    position: relative;
+  }
+
+  .docs-nav__items li::before {
+    content: "";
+    position: absolute;
+    left: -14px;
+    top: -1px;
+    width: 14px;
+    height: 15px;
+    border-left: 1px solid var(--cc-border-strong);
+    border-bottom: 1px solid var(--cc-border-strong);
+    border-bottom-left-radius: 8px;
+  }
+
+  .docs-nav__items li::after {
+    content: "";
+    position: absolute;
+    left: -14px;
+    top: 14px;
+    bottom: -1px;
+    width: 1px;
+    background: var(--cc-border-strong);
+  }
+
+  .docs-nav__items li:last-child::after {
+    display: none;
   }
 
   .docs-nav__link {

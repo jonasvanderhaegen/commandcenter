@@ -27,14 +27,26 @@
   </div>
 
   <nav class="sidebar__nav" aria-label="Primary">
-    <a href="/" class="sidebar__item sidebar__item--active">
-      <span class="sidebar__item-icon" aria-hidden="true">&#9670;</span>
-      <span>Projects</span>
-    </a>
-    <div class="sidebar__group">
-      <a class="sidebar__subitem" href="#">Processes</a>
-      <a class="sidebar__subitem" href="#">Agents</a>
-      <a class="sidebar__subitem" href="#">Terminals</a>
+    <div class="sidebar__nav-row" data-nav-group="true" data-expanded="true">
+      <a href="/" class="sidebar__item" data-sidebar-link>
+        <span class="sidebar__item-icon" aria-hidden="true">&#9670;</span>
+        <span>Projects</span>
+      </a>
+      <button
+        type="button"
+        class="sidebar__nav-chevron"
+        data-sidebar-subnav-toggle
+        aria-label="Toggle Projects submenu"
+      >
+        <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M2.5 3.5L5 6.5l2.5-3"></path></svg>
+      </button>
+    </div>
+    <div class="sidebar__group-collapse">
+      <div class="sidebar__group">
+        <a class="sidebar__subitem" href="#">Processes</a>
+        <a class="sidebar__subitem" href="#">Agents</a>
+        <a class="sidebar__subitem" href="#">Terminals</a>
+      </div>
     </div>
   </nav>
 
@@ -43,7 +55,11 @@
       <span class="sidebar__item-icon" aria-hidden="true">&#9636;</span>
       <span>Templates</span>
     </a>
-    <a class="sidebar__item" href="/docs">
+    <a class="sidebar__item" href="/secrets" data-sidebar-link>
+      <span class="sidebar__item-icon" aria-hidden="true">&#9636;</span>
+      <span>Secrets</span>
+    </a>
+    <a class="sidebar__item" href="/docs" data-sidebar-link>
       <span class="sidebar__item-icon" aria-hidden="true">&#9636;</span>
       <span>Docs</span>
     </a>
@@ -181,20 +197,109 @@
     text-align: center;
   }
 
+  .sidebar__nav-row {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+  }
+
+  .sidebar__nav-row .sidebar__item {
+    flex: 1;
+  }
+
+  .sidebar__nav-chevron {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    flex-shrink: 0;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--cc-text-muted);
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+
+  .sidebar__nav-chevron:hover {
+    background: var(--cc-hover-bg);
+    color: var(--cc-text);
+  }
+
+  .sidebar__nav-chevron svg {
+    width: 9px;
+    height: 9px;
+    stroke: currentColor;
+    stroke-width: 1.4;
+    fill: none;
+    transform: rotate(-90deg);
+    transition: transform 0.2s cubic-bezier(0.625, 0.05, 0, 1);
+  }
+
+  [data-nav-group][data-expanded="true"] .sidebar__nav-chevron svg {
+    transform: rotate(0deg);
+  }
+
+  /* Same height-animated collapse as DocsNav's accordion: grid-template-rows,
+     no JS height measurement needed. */
+  .sidebar__group-collapse {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.25s cubic-bezier(0.625, 0.05, 0, 1);
+  }
+
+  [data-nav-group][data-expanded="true"] + .sidebar__group-collapse {
+    grid-template-rows: 1fr;
+  }
+
+  .sidebar__group-collapse > .sidebar__group {
+    overflow: hidden;
+  }
+
   .sidebar__group {
+    position: relative;
     display: flex;
     flex-direction: column;
     gap: 1px;
     margin: 2px 0 12px 26px;
+    padding-left: 14px;
   }
 
   .sidebar__subitem {
+    position: relative;
     padding: 5px 8px;
     border-radius: 6px;
     font-size: 16px;
     color: var(--cc-text-muted);
     text-decoration: none;
     transition: background 0.15s ease, color 0.15s ease;
+  }
+
+  .sidebar__subitem::before {
+    content: "";
+    position: absolute;
+    left: -14px;
+    top: -1px;
+    width: 14px;
+    height: 15px;
+    border-left: 1px solid var(--cc-border-strong);
+    border-bottom: 1px solid var(--cc-border-strong);
+    border-bottom-left-radius: 8px;
+  }
+
+  .sidebar__subitem::after {
+    content: "";
+    position: absolute;
+    left: -14px;
+    top: 14px;
+    bottom: -1px;
+    width: 1px;
+    background: var(--cc-border-strong);
+  }
+
+  .sidebar__subitem:last-child::after {
+    display: none;
   }
 
   .sidebar__subitem:hover {
@@ -594,6 +699,15 @@
       });
     }
 
+    document.querySelectorAll("[data-sidebar-subnav-toggle]").forEach(function (btn) {
+      btn.addEventListener("click", function (e) {
+        e.preventDefault();
+        var group = btn.closest("[data-nav-group]");
+        if (!group) return;
+        group.dataset.expanded = String(group.dataset.expanded !== "true");
+      });
+    });
+
     var collapseBtn = document.getElementById("sidebarCollapse");
     function syncCollapseButton() {
       if (!collapseBtn) return;
@@ -610,6 +724,16 @@
     document.addEventListener("cc-sidebar-change", syncCollapseButton);
     syncCollapseButton();
 
+    function syncActiveLink() {
+      var path = window.location.pathname;
+      document.querySelectorAll("[data-sidebar-link]").forEach(function (link) {
+        var href = link.getAttribute("href");
+        var active = href === "/" ? path === "/" : path === href || path.indexOf(href + "/") === 0;
+        link.classList.toggle("sidebar__item--active", active);
+      });
+    }
+    syncActiveLink();
+    document.addEventListener("astro:after-swap", syncActiveLink);
     if (backdrop) {
       backdrop.addEventListener("click", function () {
         setSidebarOpen(false);
