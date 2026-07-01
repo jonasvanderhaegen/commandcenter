@@ -24,9 +24,9 @@ reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"
 # Cross-platform OS secret storage for the credential root key: macOS Keychain,
 # Windows Credential Manager, Linux Secret Service -- one API, no hand-rolled
 # platform bindings.
-keyring = "3"
-aes-gcm = "0.10"
-rand = "0.8"
+keyring = "4"
+aes-gcm = "0.11"
+rand = "0.10"
 zeroize = { version = "1", features = ["derive"] }
 base64 = "0.22"
 anyhow = "1"
