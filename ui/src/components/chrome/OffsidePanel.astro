@@ -62,7 +62,7 @@ const { id, label, side = "right", width = "380px" } = Astro.props;
     background: var(--cc-backdrop);
     opacity: 0;
     pointer-events: none;
-    transition: opacity 0.32s cubic-bezier(0.625, 0.05, 0, 1);
+    transition: opacity 0.45s ease;
   }
 
   .offside-overlay[data-side="left"] {
@@ -74,6 +74,11 @@ const { id, label, side = "right", width = "380px" } = Astro.props;
     pointer-events: auto;
   }
 
+  /* The "sway" pattern: pivot from the bottom-center (not a corner) and
+     combine a slight rotation with the slide, instead of a plain translate.
+     Values (6deg / 105% / 0.75s / this bezier) match osmo.supply's own
+     panel-open pattern -- a rotate+translate combo reads as a door swinging
+     open, not just a flat slide. */
   .offside-panel {
     width: var(--offside-width, 380px);
     max-width: 100%;
@@ -82,18 +87,19 @@ const { id, label, side = "right", width = "380px" } = Astro.props;
     border-left: 1px solid var(--cc-border-strong);
     display: flex;
     flex-direction: column;
-    transform: translateX(100%);
-    transition: transform 0.32s cubic-bezier(0.625, 0.05, 0, 1);
+    transform-origin: 50% 100%;
+    transform: rotate(6deg) translate(105%);
+    transition: transform 0.75s cubic-bezier(0.625, 0.05, 0, 1);
   }
 
   .offside-overlay[data-side="left"] .offside-panel {
     border-left: 0;
     border-right: 1px solid var(--cc-border-strong);
-    transform: translateX(-100%);
+    transform: rotate(-6deg) translate(-105%);
   }
 
   .offside-overlay[data-open="true"] .offside-panel {
-    transform: translateX(0);
+    transform: rotate(0deg) translate(0%);
   }
 
   .offside-panel__header {
