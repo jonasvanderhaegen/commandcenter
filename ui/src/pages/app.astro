@@ -328,7 +328,15 @@ import "@xterm/xterm/css/xterm.css";
     // ES modules evaluate once per URL (see EventBusInit.astro), so all
     // mutable state lives inside wire() and is rebuilt fresh whenever a new
     // .term-page DOM node shows up -- across an astro:page-load re-entry the
-    // old node (and everything closed over it) is simply gone.
+    // old node (and everything closed over it) is simply gone. Tauri's
+    // event bus is NOT scoped to that DOM node, though: it's a global
+    // subscription that outlives the page, so the two listen() calls below
+    // must be explicitly unlistened before wire() re-registers them on the
+    // next visit to /app, or every re-entry stacks another pair of
+    // listeners and duplicates output into whichever pane reuses an id.
+    let unlistenOutput: (() => void) | null = null;
+    let unlistenExit: (() => void) | null = null;
+
     function wire() {
       const root = document.querySelector<HTMLDivElement>("[data-term-page]");
       if (!root || root.dataset.wired === "true") return;
@@ -388,14 +396,31 @@ import "@xterm/xterm/css/xterm.css";
         if (row) row.dataset.status = "exited";
       }
 
+      if (unlistenOutput) {
+        unlistenOutput();
+        unlistenOutput = null;
+      }
+      if (unlistenExit) {
+        unlistenExit();
+        unlistenExit = null;
+      }
+
       listen<ProcessOutputEvent>("process:output", (event) => {
         const pane = panes.get(event.payload.processId);
         if (pane) pane.term.write(event.payload.data);
-      }).catch(() => {});
+      })
+        .then((fn) => {
+          unlistenOutput = fn;
+        })
+        .catch(() => {});
 
       listen<ProcessExitEvent>("process:exit", (event) => {
         markExited(event.payload.processId, event.payload.exitCode);
-      }).catch(() => {});
+      })
+        .then((fn) => {
+          unlistenExit = fn;
+        })
+        .catch(() => {});
 
       function closePane(processId: string) {
         const pane = panes.get(processId);
