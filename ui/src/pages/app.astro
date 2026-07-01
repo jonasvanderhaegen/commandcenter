@@ -1,0 +1,603 @@
+---
+// The first real app view: a projects sidebar (list_projects/list_processes)
+// with xterm.js terminal panes wired to the engine's PTY commands/events
+// (CONTRACT: engine command surface v1, Solo scratchpad #154). Rust
+// commands land concurrently on this branch from sibling lanes -- this page
+// codes against the contract and degrades to a static message when it's
+// not running inside the Tauri shell at all (window.__TAURI_INTERNALS__
+// absent), same as ui/src/pages/secrets.astro does for its own commands.
+import AppShellLayout from "../layouts/AppShellLayout.astro";
+import "@xterm/xterm/css/xterm.css";
+---
+
+<AppShellLayout title="Terminal - CommandCenter">
+  <div class="term-page" data-term-page>
+    <p class="term-unavailable" data-term-unavailable hidden>
+      Not running inside CommandCenter, so projects and terminals can't be reached here. Launch
+      via <code>./dev</code> to use them.
+    </p>
+
+    <div class="term-shell" data-term-shell hidden>
+      <aside class="term-sidebar">
+        <div class="term-sidebar__header">
+          <h1>Projects</h1>
+        </div>
+        <div class="term-projects" data-term-projects>
+          <p class="term-empty" data-term-projects-empty hidden>No projects yet.</p>
+        </div>
+      </aside>
+
+      <div class="term-main">
+        <div class="term-tabs" data-term-tabs></div>
+        <div class="term-panes" data-term-panes>
+          <p class="term-empty term-empty--panes" data-term-panes-empty>
+            Open a shell from a project on the left.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <style is:global>
+    .term-page {
+      height: calc(100vh - 64px);
+      max-width: none;
+    }
+
+    .term-unavailable {
+      margin: 0;
+      padding: 32px 14px;
+      text-align: center;
+      color: var(--cc-text-muted);
+      font-size: 14px;
+    }
+
+    .term-unavailable code {
+      font-family: ui-monospace, "SF Mono", monospace;
+      background: var(--cc-hover-bg);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+      color: var(--cc-text);
+    }
+
+    .term-shell {
+      display: flex;
+      height: 100%;
+      border: 1px solid var(--cc-border);
+      border-radius: 10px;
+      overflow: hidden;
+      background: var(--cc-surface);
+    }
+
+    .term-sidebar {
+      width: 260px;
+      flex: 0 0 260px;
+      border-right: 1px solid var(--cc-border);
+      overflow-y: auto;
+      padding: 16px 12px;
+      box-sizing: border-box;
+    }
+
+    .term-sidebar__header h1 {
+      margin: 0 0 12px;
+      padding: 0 4px;
+      font-size: 15px;
+      color: var(--cc-text);
+    }
+
+    .term-project {
+      margin-bottom: 4px;
+    }
+
+    .term-project__row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 4px;
+      border-radius: 6px;
+    }
+
+    .term-project__name {
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--cc-text);
+    }
+
+    .term-project__new {
+      flex: 0 0 auto;
+      width: 22px;
+      height: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--cc-border-strong);
+      border-radius: 6px;
+      background: var(--cc-surface-2);
+      color: var(--cc-text-secondary);
+      cursor: pointer;
+      font-size: 14px;
+      line-height: 1;
+      padding: 0;
+    }
+
+    .term-project__new:hover {
+      background: var(--cc-hover-bg);
+      color: var(--cc-text);
+    }
+
+    .term-project__new:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+
+    .term-processes {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      margin: 2px 0 10px;
+    }
+
+    .term-process {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 8px 5px 18px;
+      border-radius: 6px;
+      border: 0;
+      background: transparent;
+      color: var(--cc-text-secondary);
+      font-size: 13px;
+      cursor: pointer;
+      text-align: left;
+      width: 100%;
+    }
+
+    .term-process:hover {
+      background: var(--cc-hover-bg);
+    }
+
+    .term-process[data-active="true"] {
+      background: var(--cc-active-bg);
+      color: var(--cc-text);
+    }
+
+    .term-process__name {
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .term-process__dot {
+      flex: 0 0 auto;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--cc-text-muted);
+    }
+
+    .term-process[data-status="running"] .term-process__dot {
+      background: var(--cc-accent);
+    }
+
+    .term-process[data-status="exited"] .term-process__dot {
+      background: var(--cc-danger);
+    }
+
+    .term-main {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .term-tabs {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      padding: 8px 8px 0;
+      border-bottom: 1px solid var(--cc-border);
+      overflow-x: auto;
+    }
+
+    .term-tab {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 10px;
+      border: 1px solid var(--cc-border);
+      border-bottom: 0;
+      border-radius: 8px 8px 0 0;
+      background: var(--cc-surface-2);
+      color: var(--cc-text-secondary);
+      font-size: 12px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .term-tab[data-active="true"] {
+      background: var(--cc-bg);
+      color: var(--cc-text);
+    }
+
+    .term-tab__close {
+      border: 0;
+      background: none;
+      color: inherit;
+      opacity: 0.6;
+      cursor: pointer;
+      font-size: 12px;
+      line-height: 1;
+      padding: 0 2px;
+    }
+
+    .term-tab__close:hover {
+      opacity: 1;
+    }
+
+    .term-panes {
+      flex: 1;
+      min-height: 0;
+      position: relative;
+      background: var(--cc-bg);
+    }
+
+    .term-pane {
+      position: absolute;
+      inset: 0;
+      padding: 8px;
+      box-sizing: border-box;
+      display: none;
+    }
+
+    .term-pane[data-active="true"] {
+      display: block;
+    }
+
+    .term-pane .xterm {
+      height: 100%;
+    }
+
+    .term-empty {
+      margin: 0;
+      padding: 32px 14px;
+      text-align: center;
+      color: var(--cc-text-muted);
+      font-size: 13px;
+    }
+
+    .term-empty--panes {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+  </style>
+
+  <script>
+    import { Terminal } from "@xterm/xterm";
+    import { FitAddon } from "@xterm/addon-fit";
+    import { invoke } from "@tauri-apps/api/core";
+    import { listen } from "@tauri-apps/api/event";
+
+    interface Project {
+      id: string;
+      name: string;
+      path: string;
+    }
+
+    type ProcessStatus = "running" | "exited";
+
+    interface ProcessInfo {
+      id: string;
+      projectId: string;
+      name: string;
+      command: string[];
+      cwd: string | null;
+      status: ProcessStatus;
+      pid: number | null;
+      exitCode: number | null;
+    }
+
+    interface ProcessOutputEvent {
+      processId: string;
+      data: string;
+    }
+
+    interface ProcessExitEvent {
+      processId: string;
+      exitCode: number | null;
+    }
+
+    interface Pane {
+      process: ProcessInfo;
+      container: HTMLDivElement;
+      tab: HTMLButtonElement;
+      term: Terminal;
+      fitAddon: FitAddon;
+      seeded: boolean;
+    }
+
+    // ES modules evaluate once per URL (see EventBusInit.astro), so all
+    // mutable state lives inside wire() and is rebuilt fresh whenever a new
+    // .term-page DOM node shows up -- across an astro:page-load re-entry the
+    // old node (and everything closed over it) is simply gone.
+    function wire() {
+      const root = document.querySelector<HTMLDivElement>("[data-term-page]");
+      if (!root || root.dataset.wired === "true") return;
+      root.dataset.wired = "true";
+
+      const unavailable = root.querySelector<HTMLElement>("[data-term-unavailable]");
+      const shell = root.querySelector<HTMLElement>("[data-term-shell]");
+
+      if (!("__TAURI_INTERNALS__" in window)) {
+        if (unavailable) unavailable.hidden = false;
+        if (shell) shell.hidden = true;
+        return;
+      }
+
+      if (unavailable) unavailable.hidden = true;
+      if (shell) shell.hidden = false;
+
+      const projectsEl = root.querySelector<HTMLElement>("[data-term-projects]");
+      const projectsEmpty = root.querySelector<HTMLElement>("[data-term-projects-empty]");
+      const tabsEl = root.querySelector<HTMLElement>("[data-term-tabs]");
+      const panesEl = root.querySelector<HTMLElement>("[data-term-panes]");
+      const panesEmpty = root.querySelector<HTMLElement>("[data-term-panes-empty]");
+      if (!projectsEl || !tabsEl || !panesEl) return;
+
+      const panes = new Map<string, Pane>();
+      let activeId: string | null = null;
+
+      function setActive(processId: string | null) {
+        activeId = processId;
+        if (panesEmpty) panesEmpty.hidden = panes.size > 0;
+        panes.forEach((pane, id) => {
+          const active = id === processId;
+          pane.container.dataset.active = String(active);
+          pane.tab.dataset.active = String(active);
+          if (active) {
+            pane.fitAddon.fit();
+            pane.term.focus();
+            void invoke("resize_process", {
+              processId: id,
+              cols: pane.term.cols,
+              rows: pane.term.rows,
+            }).catch(() => {});
+          }
+        });
+      }
+
+      function markExited(processId: string, exitCode: number | null) {
+        const pane = panes.get(processId);
+        if (pane) {
+          pane.process.status = "exited";
+          pane.process.exitCode = exitCode;
+          pane.term.write(`\r\n[process exited${exitCode === null ? "" : " (code " + exitCode + ")"}]\r\n`);
+        }
+        const row = projectsEl!.querySelector<HTMLElement>(
+          '[data-term-process-id="' + processId + '"]'
+        );
+        if (row) row.dataset.status = "exited";
+      }
+
+      listen<ProcessOutputEvent>("process:output", (event) => {
+        const pane = panes.get(event.payload.processId);
+        if (pane) pane.term.write(event.payload.data);
+      }).catch(() => {});
+
+      listen<ProcessExitEvent>("process:exit", (event) => {
+        markExited(event.payload.processId, event.payload.exitCode);
+      }).catch(() => {});
+
+      function closePane(processId: string) {
+        const pane = panes.get(processId);
+        if (!pane) return;
+        void invoke("close_process", { processId }).catch(() => {});
+        pane.term.dispose();
+        pane.tab.remove();
+        pane.container.remove();
+        panes.delete(processId);
+        if (activeId === processId) {
+          const next = panes.keys().next();
+          setActive(next.done ? null : next.value);
+        }
+      }
+
+      function openPane(process: ProcessInfo) {
+        const existing = panes.get(process.id);
+        if (existing) {
+          setActive(process.id);
+          return;
+        }
+
+        const tab = document.createElement("button");
+        tab.type = "button";
+        tab.className = "term-tab";
+        const tabLabel = document.createElement("span");
+        tabLabel.textContent = process.name;
+        const closeBtn = document.createElement("button");
+        closeBtn.type = "button";
+        closeBtn.className = "term-tab__close";
+        closeBtn.setAttribute("aria-label", "Close");
+        closeBtn.textContent = "×";
+        closeBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          closePane(process.id);
+        });
+        tab.appendChild(tabLabel);
+        tab.appendChild(closeBtn);
+        tab.addEventListener("click", () => setActive(process.id));
+        tabsEl!.appendChild(tab);
+
+        const container = document.createElement("div");
+        container.className = "term-pane";
+        panesEl!.appendChild(container);
+
+        const term = new Terminal({
+          convertEol: true,
+          fontSize: 13,
+          fontFamily: 'ui-monospace, "SF Mono", monospace',
+          theme: { background: "#00000000" },
+        });
+        const fitAddon = new FitAddon();
+        term.loadAddon(fitAddon);
+        term.open(container);
+
+        const pane: Pane = { process, container, tab, term, fitAddon, seeded: false };
+        panes.set(process.id, pane);
+        setActive(process.id);
+        fitAddon.fit();
+
+        term.onData((data) => {
+          void invoke("send_process_input", { processId: process.id, data }).catch(() => {});
+        });
+
+        invoke<string>("get_process_output", { processId: process.id })
+          .then((buffered) => {
+            if (buffered) term.write(buffered);
+            pane.seeded = true;
+          })
+          .catch(() => {
+            pane.seeded = true;
+          });
+      }
+
+      async function spawnShell(project: Project, newBtn: HTMLButtonElement) {
+        newBtn.disabled = true;
+        try {
+          const probe = new Terminal();
+          const probeFit = new FitAddon();
+          probe.loadAddon(probeFit);
+          const hiddenHost = document.createElement("div");
+          hiddenHost.style.position = "absolute";
+          hiddenHost.style.visibility = "hidden";
+          hiddenHost.style.width = panesEl!.clientWidth + "px";
+          hiddenHost.style.height = panesEl!.clientHeight + "px";
+          document.body.appendChild(hiddenHost);
+          probe.open(hiddenHost);
+          probeFit.fit();
+          const cols = probe.cols;
+          const rows = probe.rows;
+          probe.dispose();
+          hiddenHost.remove();
+
+          const process = await invoke<ProcessInfo>("spawn_process", {
+            projectId: project.id,
+            name: "shell",
+            command: ["zsh", "-l"],
+            cwd: project.path,
+            cols,
+            rows,
+          });
+          openPane(process);
+          await refreshProcesses(project);
+        } catch (err) {
+          console.error("[term] spawn_process failed:", err);
+        } finally {
+          newBtn.disabled = false;
+        }
+      }
+
+      const processListEls = new Map<string, HTMLElement>();
+
+      async function refreshProcesses(project: Project) {
+        const listEl = processListEls.get(project.id);
+        if (!listEl) return;
+        try {
+          const processes = await invoke<ProcessInfo[]>("list_processes", {
+            projectId: project.id,
+          });
+          listEl.innerHTML = "";
+          processes.forEach((process) => {
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "term-process";
+            btn.dataset.termProcessId = process.id;
+            btn.dataset.status = process.status;
+            btn.dataset.active = String(process.id === activeId);
+            const dot = document.createElement("span");
+            dot.className = "term-process__dot";
+            const name = document.createElement("span");
+            name.className = "term-process__name";
+            name.textContent = process.name;
+            btn.appendChild(dot);
+            btn.appendChild(name);
+            btn.addEventListener("click", () => openPane(process));
+            listEl.appendChild(btn);
+          });
+        } catch (err) {
+          console.error("[term] list_processes failed:", err);
+        }
+      }
+
+      async function loadProjects() {
+        try {
+          const projects = await invoke<Project[]>("list_projects");
+          if (projectsEmpty) projectsEmpty.hidden = projects.length > 0;
+          projects.forEach((project) => {
+            const row = document.createElement("div");
+            row.className = "term-project";
+
+            const header = document.createElement("div");
+            header.className = "term-project__row";
+            const name = document.createElement("span");
+            name.className = "term-project__name";
+            name.textContent = project.name;
+            header.appendChild(name);
+
+            const newBtn = document.createElement("button");
+            newBtn.type = "button";
+            newBtn.className = "term-project__new";
+            newBtn.setAttribute("aria-label", "New shell in " + project.name);
+            newBtn.title = "New shell";
+            newBtn.textContent = "+";
+            newBtn.addEventListener("click", () => spawnShell(project, newBtn));
+            header.appendChild(newBtn);
+            row.appendChild(header);
+
+            const listEl = document.createElement("div");
+            listEl.className = "term-processes";
+            processListEls.set(project.id, listEl);
+            row.appendChild(listEl);
+
+            projectsEl!.appendChild(row);
+            void refreshProcesses(project);
+          });
+        } catch (err) {
+          console.error("[term] list_projects failed:", err);
+          if (projectsEmpty) {
+            projectsEmpty.hidden = false;
+            projectsEmpty.textContent = "Failed to load projects.";
+          }
+        }
+      }
+
+      window.addEventListener("resize", () => {
+        if (activeId) {
+          const pane = panes.get(activeId);
+          if (pane) {
+            pane.fitAddon.fit();
+            void invoke("resize_process", {
+              processId: activeId,
+              cols: pane.term.cols,
+              rows: pane.term.rows,
+            }).catch(() => {});
+          }
+        }
+      });
+
+      void loadProjects();
+    }
+
+    wire();
+    document.addEventListener("astro:page-load", wire);
+  </script>
+</AppShellLayout>
