@@ -7,18 +7,14 @@
 
 mod credentials;
 mod single_instance;
+mod store;
 mod verify;
 
 use credentials::{CredentialStore, CredentialSummary};
 use serde::Serialize;
+use store::{CommandDef, Project, ProjectStore};
 use tauri::Manager;
 use verify::VerifyResult;
-
-#[derive(Serialize)]
-pub struct Project {
-    pub id: String,
-    pub name: String,
-}
 
 #[derive(Serialize)]
 pub struct Process {
@@ -27,13 +23,61 @@ pub struct Process {
     pub status: String,
 }
 
-/// Enumerate projects. Placeholder until a store exists.
+/// Enumerate projects from the SQLite store.
 #[tauri::command]
-fn list_projects() -> Vec<Project> {
-    vec![Project {
-        id: "demo".into(),
-        name: "demo".into(),
-    }]
+fn list_projects(app: tauri::AppHandle) -> Result<Vec<Project>, String> {
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    let store = ProjectStore::open(&dir).map_err(|e| e.to_string())?;
+    store.list_projects().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn create_project(app: tauri::AppHandle, name: String, path: String) -> Result<Project, String> {
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    let store = ProjectStore::open(&dir).map_err(|e| e.to_string())?;
+    store
+        .create_project(&name, &path)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn delete_project(app: tauri::AppHandle, project_id: String) -> Result<(), String> {
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    let store = ProjectStore::open(&dir).map_err(|e| e.to_string())?;
+    store.delete_project(&project_id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn list_command_defs(app: tauri::AppHandle, project_id: String) -> Result<Vec<CommandDef>, String> {
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    let store = ProjectStore::open(&dir).map_err(|e| e.to_string())?;
+    store
+        .list_command_defs(&project_id)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn save_command_def(
+    app: tauri::AppHandle,
+    project_id: String,
+    name: String,
+    command: Vec<String>,
+    cwd: Option<String>,
+) -> Result<CommandDef, String> {
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    let store = ProjectStore::open(&dir).map_err(|e| e.to_string())?;
+    store
+        .save_command_def(&project_id, &name, &command, cwd.as_deref())
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn delete_command_def(app: tauri::AppHandle, command_def_id: String) -> Result<(), String> {
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    let store = ProjectStore::open(&dir).map_err(|e| e.to_string())?;
+    store
+        .delete_command_def(&command_def_id)
+        .map_err(|e| e.to_string())
 }
 
 /// Processes within a project. Placeholder until the engine exists.
@@ -299,6 +343,11 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             list_projects,
+            create_project,
+            delete_project,
+            list_command_defs,
+            save_command_def,
+            delete_command_def,
             list_processes,
             save_credential,
             update_credential,
