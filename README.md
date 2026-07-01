@@ -39,7 +39,7 @@ WebView frontend, rather than an Electron + node-pty stack.
 
 ```sh
 # one-time
-npm install                 # root: Tauri CLI
+npm install                 # root: Tauri CLI + git hooks (lefthook)
 npm install --prefix ui     # frontend deps
 
 # run the app (Rust toolchain + Tauri prereqs required)
@@ -47,6 +47,11 @@ npm run tauri dev
 ```
 
 The UI alone (no Rust backend) runs with `npm run --prefix ui dev`.
+
+Git hooks are managed by [lefthook](https://lefthook.dev) and installed
+automatically by the root `npm install`. Pre-commit formats and lints staged
+files; pre-push runs `vp check` and Rust `clippy`. Bypass a single commit with
+`git commit --no-verify`, or set `LEFTHOOK=0` for the current shell.
 
 ## Layout
 

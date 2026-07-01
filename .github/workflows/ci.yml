@@ -119,7 +119,7 @@ jobs:
             save-if: "${{ github.ref == 'refs/heads/main' }}",
           }
       # taskpolicy -b = macOS background QoS — yields CPU/IO to the skyline daemon
-      - run: taskpolicy -b cargo clippy --all-targets -- -D warnings
+      - run: taskpolicy -b cargo clippy --workspace --all-targets -- -D warnings
       - name: sccache stats
         if: always()
         run: sccache --show-stats >> "$GITHUB_STEP_SUMMARY" || true
@@ -200,7 +200,7 @@ jobs:
             cache-targets: "false",
             save-if: "${{ github.ref == 'refs/heads/main' }}",
           }
-      - run: taskpolicy -b cargo test
+      - run: taskpolicy -b cargo test --workspace
       - name: sccache stats
         if: always()
         run: sccache --show-stats >> "$GITHUB_STEP_SUMMARY" || true

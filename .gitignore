@@ -16,6 +16,8 @@ ui/playwright-report/
 
 # Vite+ local hooks dir (lefthook is the source of truth)
 .vite-hooks/
+# Personal, uncommitted lefthook overrides (auto-merged when present)
+lefthook-local.yml
 
 # Logs
 *.log

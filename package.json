@@ -11,10 +11,12 @@
     "fmt": "vp fmt .",
     "check": "vp check",
     "test": "vp test",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "prepare": "lefthook install"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2",
+    "lefthook": "^2.1.9",
     "vite-plus": "^0.2.1"
   }
 }

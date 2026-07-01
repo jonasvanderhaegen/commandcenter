@@ -5,6 +5,14 @@ description = "A terminal-of-terminals and agent orchestrator"
 edition = "2021"
 publish = false
 
+[workspace]
+# cc-mcp (edition 2024) is a separate package pulled in below as a path
+# dependency. Making it a workspace member lets `cargo fmt --all`,
+# `cargo clippy --workspace`, and `cargo test --workspace` reach it. resolver
+# "2" matches the 2021 root package's own default, so the app build is unchanged.
+members = ["crates/*"]
+resolver = "2"
+
 [lib]
 name = "commandcenter_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]

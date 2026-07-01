@@ -18,6 +18,12 @@ pub struct CcMcpServer {
     tool_router: rmcp::handler::server::router::tool::ToolRouter<CcMcpServer>,
 }
 
+impl Default for CcMcpServer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[tool_router(router = tool_router)]
 impl CcMcpServer {
     #[must_use]
