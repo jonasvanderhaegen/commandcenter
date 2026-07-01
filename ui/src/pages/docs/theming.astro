@@ -1,0 +1,27 @@
+---
+import DocsLayout from "../../layouts/DocsLayout.astro";
+---
+
+<DocsLayout title="Theming" currentSlug="theming">
+  <h1>Theming</h1>
+  <p>
+    Light, dark, and system modes are fully functional, persisted
+    locally, and synced to the native Tauri window chrome on both macOS
+    and Windows via <code>getCurrentWindow().setTheme()</code>.
+  </p>
+
+  <h2>No flash of the wrong theme</h2>
+  <p>
+    The mode is applied in a blocking <code>&lt;head&gt;</code> script
+    before first paint, so there's no flash of the wrong theme on load.
+    The same script also applies the sidebar's collapsed/expanded state
+    before paint, for the same reason.
+  </p>
+
+  <h2>CSS variables</h2>
+  <p>
+    All chrome components theme via <code>--cc-*</code> custom
+    properties defined once in <code>AppShellLayout.astro</code>, not
+    hardcoded colors, so both palettes stay consistent everywhere.
+  </p>
+</DocsLayout>

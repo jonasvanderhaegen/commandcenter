@@ -1,0 +1,129 @@
+---
+// Toggleable column-grid overlay for layout/alignment debugging. Own
+// implementation of a common design-tool pattern. Toggle via the "G" key
+// (ignored while typing in an input) or the "Column grid" item in the
+// sidebar's account menu (see AppSidebar.astro's #gridMenuToggle); columns
+// fade/scale in with a staggered delay.
+---
+
+<div class="grid-overlay" id="gridOverlay" aria-hidden="true">
+  <div class="grid-overlay__columns">
+    {Array.from({ length: 12 }).map((_, i) => (
+      <div class="grid-overlay__col" style={`--col-index: ${i}`}></div>
+    ))}
+  </div>
+</div>
+
+<style>
+  /* Matches .app-shell__content's box (margin-left + padding) exactly, so
+     the grid overlays the main content area only, not the sidebar. */
+  .grid-overlay {
+    position: fixed;
+    top: 0;
+    left: 240px;
+    right: 0;
+    bottom: 0;
+    z-index: 940;
+    pointer-events: none;
+    padding: 0 32px 0 16px;
+    transition: left 0.32s cubic-bezier(0.625, 0.05, 0, 1);
+  }
+
+  html.sidebar-collapsed .grid-overlay {
+    left: 68px;
+  }
+
+  .grid-overlay__columns {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 16px;
+    height: 100%;
+  }
+
+  /* Column COUNT drops at each breakpoint (12 -> 6 -> 4 -> 2) instead of
+     columns getting continuously thinner, so each visible column stays a
+     legible, proportional width. Extra columns are hidden, not squeezed. */
+  @media (max-width: 991px) {
+    .grid-overlay__columns {
+      grid-template-columns: repeat(6, 1fr);
+    }
+    .grid-overlay__col:nth-child(n + 7) {
+      display: none;
+    }
+  }
+
+  @media (max-width: 767px) {
+    .grid-overlay__columns {
+      grid-template-columns: repeat(4, 1fr);
+    }
+    .grid-overlay__col:nth-child(n + 5) {
+      display: none;
+    }
+  }
+
+  @media (max-width: 479px) {
+    .grid-overlay__columns {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    .grid-overlay__col:nth-child(n + 3) {
+      display: none;
+    }
+  }
+
+  @media (max-width: 900px) {
+    .grid-overlay,
+    html.sidebar-collapsed .grid-overlay {
+      left: 0;
+    }
+  }
+
+  .grid-overlay__col {
+    height: 100%;
+    background: color-mix(in srgb, var(--cc-accent) 12%, transparent);
+    border-left: 1px solid color-mix(in srgb, var(--cc-accent) 35%, transparent);
+    border-right: 1px solid color-mix(in srgb, var(--cc-accent) 35%, transparent);
+
+    opacity: 0;
+    transform: scaleY(0.85);
+    transform-origin: top;
+    transition:
+      opacity 0.22s ease,
+      transform 0.22s ease;
+    transition-delay: calc(var(--col-index) * 18ms);
+  }
+
+  .grid-overlay[data-open="true"] .grid-overlay__col {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+</style>
+
+<script is:inline>
+  (function () {
+    var toggle = document.getElementById("gridMenuToggle");
+    var overlay = document.getElementById("gridOverlay");
+    if (!toggle || !overlay) return;
+
+    function isTypingTarget(el) {
+      if (!el) return false;
+      var tag = el.tagName;
+      return tag === "INPUT" || tag === "TEXTAREA" || el.isContentEditable;
+    }
+
+    function setOpen(open) {
+      overlay.dataset.open = String(open);
+      overlay.setAttribute("aria-hidden", String(!open));
+      toggle.setAttribute("aria-pressed", String(open));
+    }
+
+    toggle.addEventListener("click", function () {
+      setOpen(overlay.dataset.open !== "true");
+    });
+
+    document.addEventListener("keydown", function (e) {
+      if (e.key.toLowerCase() !== "g" || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (isTypingTarget(document.activeElement)) return;
+      setOpen(overlay.dataset.open !== "true");
+    });
+  })();
+</script>

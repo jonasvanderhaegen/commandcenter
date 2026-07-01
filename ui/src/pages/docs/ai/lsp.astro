@@ -1,0 +1,61 @@
+---
+import DocsLayout from "../../../layouts/DocsLayout.astro";
+---
+
+<DocsLayout title="What is an LSP" currentSlug="ai/lsp">
+  <h1>What is an LSP</h1>
+  <p>
+    The Language Server Protocol (LSP) solved a real N&#215;M problem:
+    before it existed, every editor that wanted "go to definition" or
+    inline diagnostics for a language had to write custom integration
+    code for that specific language's tooling. N editors &#215; M
+    languages meant N&#215;M pieces of glue code. LSP standardized the
+    protocol between editor and language intelligence, turning N&#215;M
+    into N+M -- implement a language server once, and every
+    LSP-compatible editor can use it.
+  </p>
+
+  <h2>What it actually provides</h2>
+  <p>
+    A language server answers position-addressed requests over JSON-RPC:
+    <code>textDocument/definition</code>, <code>references</code>,
+    <code>hover</code>, <code>diagnostics</code>, and more. The editor
+    owns the open buffer and streams change events (<code>didChange</code>)
+    to keep the server's view of the file in sync as you type.
+  </p>
+
+  <h2>Why LSP doesn't map cleanly onto AI agents</h2>
+  <p>
+    LSP's design assumes an editor with an open, actively-edited buffer.
+    An AI agent doesn't have that:
+  </p>
+  <table>
+    <thead>
+      <tr><th></th><th>LSP was designed for</th><th>What an agent actually needs</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Addressing</td><td><code>{"{line, character}"}</code> cursor positions</td><td>Stable symbol/anchor IDs that survive edits</td></tr>
+      <tr><td>State</td><td>Editor owns the buffer, streams changes</td><td>No persistent buffer; the server has to own the truth</td></tr>
+      <tr><td>Granularity</td><td>One capability per request</td><td>Coarse, batched, "do the useful thing" calls</td></tr>
+      <tr><td>Lifecycle</td><td>Tied to an open editor window</td><td>Tied to a task; often headless</td></tr>
+    </tbody>
+  </table>
+  <p>
+    Handing an agent raw LSP leaks these editor assumptions: position
+    math goes stale the instant a file changes underneath it, and the
+    agent has no buffer to keep in sync. A useful "AI-facing" code
+    intelligence layer wraps real LSP servers (rust-analyzer, tsserver,
+    etc.) with edit-safe anchoring instead of raw line/character
+    coordinates, and serves that over a protocol the agent's host
+    actually speaks -- typically <a href="/docs/ai/mcp">MCP</a>.
+  </p>
+
+  <h2>LSP and MCP, side by side</h2>
+  <p>
+    They solve the same category of problem (kill the N&#215;M
+    integration tax) for two different consumers: LSP standardizes
+    editor &#8596; language-intelligence; MCP standardizes agent
+    &#8596; tools/resources/prompts. MCP was deliberately modeled on
+    LSP's approach -- JSON-RPC foundation, same network-effect bet.
+  </p>
+</DocsLayout>

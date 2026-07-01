@@ -1,0 +1,89 @@
+---
+// Prev/next page nav, rendered both above and below the article by
+// DocsLayout.astro. Two side-by-side blocks (prev left, next right); an
+// empty page keeps the grid slot so the other side doesn't jump around.
+type Page = { slug: string; title: string };
+
+type Props = {
+  prev: Page | null;
+  next: Page | null;
+};
+
+const { prev, next } = Astro.props;
+---
+
+{
+  (prev || next) && (
+    <nav class="docs-pager" aria-label="Page navigation">
+      {prev ? (
+        <a href={prev.slug ? `/docs/${prev.slug}` : "/docs"} class="docs-pager__link docs-pager__link--prev">
+          <span class="docs-pager__dir">&#8592; Previous</span>
+          <span class="docs-pager__title">{prev.title}</span>
+        </a>
+      ) : (
+        <div />
+      )}
+      {next ? (
+        <a href={`/docs/${next.slug}`} class="docs-pager__link docs-pager__link--next">
+          <span class="docs-pager__dir">Next &#8594;</span>
+          <span class="docs-pager__title">{next.title}</span>
+        </a>
+      ) : (
+        <div />
+      )}
+    </nav>
+  )
+}
+
+<style>
+  .docs-pager {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .docs-pager__link {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 12px 14px;
+    border: 1px solid var(--cc-border);
+    border-radius: 10px;
+    text-decoration: none;
+    transition: background 0.15s ease, border-color 0.15s ease;
+  }
+
+  .docs-pager__link:hover {
+    background: var(--cc-hover-bg);
+    border-color: var(--cc-border-strong);
+  }
+
+  .docs-pager__link--next {
+    text-align: right;
+    align-items: flex-end;
+  }
+
+  .docs-pager__dir {
+    font-size: 0.7em;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--cc-text-muted);
+  }
+
+  .docs-pager__title {
+    font-size: 0.9em;
+    font-weight: 600;
+    color: var(--cc-text);
+  }
+
+  @media (max-width: 600px) {
+    .docs-pager {
+      grid-template-columns: 1fr;
+    }
+
+    .docs-pager__link--next {
+      text-align: left;
+      align-items: flex-start;
+    }
+  }
+</style>

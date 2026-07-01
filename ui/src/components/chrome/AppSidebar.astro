@@ -2,7 +2,9 @@
 // Left app sidebar: a fixed rail on desktop, a full-screen overlay panel on
 // narrow viewports (toggled by the hamburger button). The account row at the
 // bottom opens a menu upward (transform-origin: bottom) since there's no room
-// below it, and shows on hover/focus rather than click.
+// below it, and shows on hover/focus rather than click. The brand row at the
+// top is the Tauri window drag region (decorations:false has no native
+// titlebar to drag from otherwise).
 ---
 
 <button
@@ -19,7 +21,7 @@
 <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
 
 <aside class="sidebar" id="appSidebar">
-  <div class="sidebar__brand">
+  <div class="sidebar__brand" data-tauri-drag-region>
     <span class="sidebar__brand-mark" aria-hidden="true">&gt;_</span>
     <span class="sidebar__brand-name">CommandCenter</span>
   </div>
@@ -41,7 +43,7 @@
       <span class="sidebar__item-icon" aria-hidden="true">&#9636;</span>
       <span>Templates</span>
     </a>
-    <a class="sidebar__item" href="#">
+    <a class="sidebar__item" href="/docs">
       <span class="sidebar__item-icon" aria-hidden="true">&#9636;</span>
       <span>Docs</span>
     </a>
@@ -62,8 +64,12 @@
     </button>
 
     <div class="sidebar__account-menu" id="accountMenu" role="menu">
+      <button type="button" class="sidebar__menu-item" id="gridMenuToggle" role="menuitemcheckbox" aria-pressed="false">
+        <span>Column grid</span>
+        <span class="sidebar__menu-shortcut">G</span>
+      </button>
+      <hr class="sidebar__menu-divider" />
       <div class="sidebar__theme-row">
-        <span>Appearance</span>
         <div class="sidebar__theme-switch" role="radiogroup" aria-label="Theme" style={`--sidebar-theme-count: 3`}>
           <div class="sidebar__theme-indicator" aria-hidden="true"></div>
           <button type="button" class="sidebar__theme-btn" data-theme-option="light" role="radio" aria-checked="false" aria-label="Light">&#9728;</button>
@@ -74,25 +80,46 @@
       <hr class="sidebar__menu-divider" />
       <a class="sidebar__menu-item" href="#" role="menuitem">Settings</a>
       <a class="sidebar__menu-item" href="#" role="menuitem">Report a bug</a>
-      <a class="sidebar__menu-item sidebar__menu-item--danger" href="#" role="menuitem">Log out</a>
     </div>
   </div>
 </aside>
 
+<button
+  type="button"
+  class="sidebar-collapse"
+  id="sidebarCollapse"
+  aria-label="Collapse sidebar"
+  aria-expanded="true"
+>
+  <svg viewBox="0 0 10 10" aria-hidden="true"><path d="M6.5 1.5L2.5 5l4 3.5"></path></svg>
+</button>
+
 <style>
+  #appSidebar,
+  #appSidebar *,
+  #accountMenu,
+  #accountMenu * {
+    box-sizing: border-box;
+  }
+
   .sidebar {
     position: fixed;
-    top: var(--titlebar-h, 0px);
-    left: 0;
-    bottom: 0;
-    width: 200px;
+    top: calc(var(--titlebar-h, 0px) + 8px);
+    left: 8px;
+    bottom: 8px;
+    width: 224px;
     display: flex;
     flex-direction: column;
     background: var(--cc-surface);
-    border-right: 1px solid var(--cc-border);
-    padding: 16px 10px;
+    border: 1px solid var(--cc-border);
+    border-radius: 12px;
+    padding: 16px 10px 8px;
     z-index: 900;
+    /* Same snappy custom ease this site's own vendored GSAP setup uses
+       elsewhere (CustomEase "osmo": 0.625, 0.05, 0, 1) for menu/nav moves. */
     transition:
+      width 0.32s cubic-bezier(0.625, 0.05, 0, 1),
+      padding 0.32s cubic-bezier(0.625, 0.05, 0, 1),
       transform 0.28s ease,
       opacity 0.28s ease,
       background 0.15s ease,
@@ -104,7 +131,7 @@
     align-items: center;
     gap: 6px;
     padding: 0 6px 14px;
-    font-size: 14px;
+    font-size: 19px;
     font-weight: 600;
     letter-spacing: -0.01em;
     color: var(--cc-text);
@@ -113,6 +140,10 @@
   .sidebar__brand-mark {
     color: var(--cc-accent);
     font-family: ui-monospace, "SF Mono", monospace;
+  }
+
+  .sidebar__brand-name {
+    flex: 1;
   }
 
   .sidebar__nav {
@@ -124,12 +155,12 @@
   .sidebar__item {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 6px 8px;
+    gap: 9px;
+    padding: 7px 9px;
     border-radius: 7px;
     color: var(--cc-text-secondary);
     text-decoration: none;
-    font-size: 13px;
+    font-size: 17px;
     transition: background 0.15s ease, color 0.15s ease;
   }
 
@@ -144,9 +175,9 @@
   }
 
   .sidebar__item-icon {
-    font-size: 10px;
+    font-size: 14px;
     opacity: 0.7;
-    width: 12px;
+    width: 16px;
     text-align: center;
   }
 
@@ -160,7 +191,7 @@
   .sidebar__subitem {
     padding: 5px 8px;
     border-radius: 6px;
-    font-size: 12px;
+    font-size: 16px;
     color: var(--cc-text-muted);
     text-decoration: none;
     transition: background 0.15s ease, color 0.15s ease;
@@ -191,13 +222,16 @@
     align-items: center;
     gap: 8px;
     width: 100%;
-    padding: 6px;
-    border: 0;
-    border-radius: 7px;
+    /* Same 8px used for the sidebar's own inset from the window edge --
+       keeps the padding/radius relationship consistent at both nesting
+       levels (window -> sidebar -> this row). */
+    padding: 8px;
+    border: 1px solid var(--cc-border);
+    border-radius: 12px;
     background: transparent;
     color: var(--cc-text);
     cursor: pointer;
-    transition: background 0.15s ease;
+    transition: background 0.15s ease, border-color 0.15s ease;
   }
 
   .sidebar__account-trigger:hover {
@@ -205,20 +239,20 @@
   }
 
   .sidebar__account-avatar {
-    width: 24px;
-    height: 24px;
+    width: 28px;
+    height: 28px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     background: var(--cc-hover-bg);
     color: var(--cc-text);
-    font-size: 11px;
+    font-size: 14px;
     font-weight: 600;
   }
 
   .sidebar__account-name {
-    font-size: 12px;
+    font-size: 16px;
     flex: 1;
     text-align: left;
     color: var(--cc-text-secondary);
@@ -253,6 +287,14 @@
       visibility 0.16s;
   }
 
+  /* Fixed width in the collapsed rail so the menu's content (labels, the
+     3-way appearance switch) doesn't get squeezed into 52px. */
+  html.sidebar-collapsed .sidebar__account-menu {
+    left: 0;
+    right: auto;
+    width: 224px;
+  }
+
   .sidebar__account:hover .sidebar__account-menu,
   .sidebar__account:focus-within .sidebar__account-menu {
     opacity: 1;
@@ -262,17 +304,13 @@
 
   .sidebar__theme-row {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    padding: 7px 8px;
-    font-size: 13px;
-    color: var(--cc-text-secondary);
+    padding: 2px;
   }
 
   .sidebar__theme-switch {
     position: relative;
     display: flex;
+    flex: 1;
     gap: 2px;
     background: var(--cc-hover-bg);
     border-radius: 7px;
@@ -295,8 +333,8 @@
   .sidebar__theme-btn {
     position: relative;
     z-index: 1;
-    width: 24px;
-    height: 22px;
+    flex: 1;
+    height: 28px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -304,7 +342,7 @@
     border-radius: 5px;
     background: transparent;
     color: var(--cc-text-muted);
-    font-size: 12px;
+    font-size: 15px;
     cursor: pointer;
     transition: color 0.15s ease;
   }
@@ -328,7 +366,7 @@
     background: transparent;
     border-radius: 6px;
     color: var(--cc-text-secondary);
-    font-size: 13px;
+    font-size: 16px;
     text-decoration: none;
     text-align: left;
     cursor: pointer;
@@ -346,6 +384,11 @@
     border: 0;
     border-top: 1px solid var(--cc-border);
     margin: 4px 2px;
+  }
+
+  .sidebar__menu-shortcut {
+    font-size: 13px;
+    color: var(--cc-text-muted);
   }
 
   /* Mobile hamburger + overlay behavior */
@@ -389,15 +432,123 @@
     display: none;
   }
 
+  /* Collapse toggle: sits in the existing gutter between the sidebar's right
+     edge (8px inset + 200px width = 208px) and the content's start (224px),
+     so nothing overlaps it. Hidden until the sidebar (or the button itself)
+     is hovered/focused, or while collapsed (otherwise there'd be no way to
+     expand again). Desktop only -- the mobile hamburger overlay handles
+     narrow viewports on its own. */
+  .sidebar-collapse {
+    position: fixed;
+    /* Aligned with the brand row's vertical center: sidebar top inset (8px)
+       + sidebar padding-top (16px) + ~half the brand row's line height. */
+    top: 33px;
+    left: 232px;
+    transform: translate(-50%, -50%);
+    z-index: 910;
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: 50%;
+    background: var(--cc-surface-2);
+    color: var(--cc-text-muted);
+    cursor: pointer;
+    opacity: 0;
+    transition:
+      opacity 0.15s ease,
+      left 0.32s cubic-bezier(0.625, 0.05, 0, 1),
+      background 0.15s ease,
+      color 0.15s ease;
+  }
+
+  /* Border on the right half only: draw a full circular border on the
+     pseudo-element, then clip away the left 50% so just the right arc
+     shows. */
+  .sidebar-collapse::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 1px solid var(--cc-border-strong);
+    clip-path: inset(0 0 0 50%);
+    pointer-events: none;
+  }
+
+  .sidebar-collapse svg {
+    width: 9px;
+    height: 9px;
+    stroke: currentColor;
+    stroke-width: 1.4;
+    fill: none;
+    transition: transform 0.32s cubic-bezier(0.625, 0.05, 0, 1);
+  }
+
+  .sidebar:hover ~ .sidebar-collapse,
+  .sidebar-collapse:hover,
+  .sidebar-collapse:focus-visible {
+    opacity: 1;
+  }
+
+  .sidebar-collapse:hover {
+    color: var(--cc-text);
+  }
+
+  /* Collapsed: shrink to an icon-only rail instead of vanishing entirely --
+     labels/subitems fade out, icons stay centered. */
+  html.sidebar-collapsed .sidebar {
+    width: 52px;
+    padding-left: 6px;
+    padding-right: 6px;
+  }
+
+  html.sidebar-collapsed .sidebar__brand {
+    justify-content: center;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  html.sidebar-collapsed .sidebar__brand-name,
+  html.sidebar-collapsed .sidebar__item span:not(.sidebar__item-icon),
+  html.sidebar-collapsed .sidebar__group,
+  html.sidebar-collapsed .sidebar__account-name,
+  html.sidebar-collapsed .sidebar__account-kebab {
+    display: none;
+  }
+
+  html.sidebar-collapsed .sidebar__item,
+  html.sidebar-collapsed .sidebar__account-trigger {
+    justify-content: center;
+  }
+
+  html.sidebar-collapsed .sidebar-collapse {
+    left: 60px;
+    opacity: 1;
+  }
+
+  html.sidebar-collapsed .sidebar-collapse svg {
+    transform: scaleX(-1);
+  }
+
   @media (max-width: 900px) {
+    .sidebar-collapse {
+      display: none;
+    }
+
     .sidebar-toggle {
       display: block;
     }
 
     .sidebar {
       top: 0;
+      left: 0;
+      bottom: 0;
       width: 100%;
       max-width: 420px;
+      border-radius: 0;
+      border-left: 0;
       padding-top: calc(var(--titlebar-h, 0px) + 16px);
       transform: translateX(-100%);
       opacity: 0;
@@ -442,6 +593,23 @@
         setSidebarOpen(!html.classList.contains("sidebar-open"));
       });
     }
+
+    var collapseBtn = document.getElementById("sidebarCollapse");
+    function syncCollapseButton() {
+      if (!collapseBtn) return;
+      var collapsed = window.__ccSidebar && window.__ccSidebar.get();
+      collapseBtn.setAttribute("aria-expanded", String(!collapsed));
+      collapseBtn.setAttribute("aria-label", collapsed ? "Expand sidebar" : "Collapse sidebar");
+    }
+    if (collapseBtn) {
+      collapseBtn.addEventListener("click", function () {
+        if (window.__ccSidebar) window.__ccSidebar.toggle();
+        syncCollapseButton();
+      });
+    }
+    document.addEventListener("cc-sidebar-change", syncCollapseButton);
+    syncCollapseButton();
+
     if (backdrop) {
       backdrop.addEventListener("click", function () {
         setSidebarOpen(false);

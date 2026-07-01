@@ -1,0 +1,43 @@
+---
+import DocsLayout from "../../layouts/DocsLayout.astro";
+---
+
+<DocsLayout title="App shell" currentSlug="app-shell">
+  <h1>App shell</h1>
+  <p>
+    The sidebar, search modal, theme switcher, and grid overlay are all
+    original implementations, not vendored from anywhere.
+  </p>
+
+  <h2>Sidebar</h2>
+  <p>
+    A floating rounded card inset 8px from the window edges (radius
+    matches the native window's own 12px corner rounding). Collapses to a
+    52px icon-only rail via the chevron in the gutter next to it (hover
+    to reveal), rather than disappearing entirely. Collapsed state
+    persists across reloads.
+  </p>
+
+  <h2>Search modal</h2>
+  <p>
+    A <kbd>&#8984;K</kbd> / <kbd>Ctrl+K</kbd> command-palette overlay.
+    Currently UI-only -- there is no search index wired up yet.
+  </p>
+
+  <h2>Grid overlay</h2>
+  <p>
+    A 12-column alignment grid toggled with <kbd>G</kbd> or the "Column
+    grid" item in the account menu. Column count drops at breakpoints
+    (12 &#8594; 6 &#8594; 4 &#8594; 2) instead of columns getting
+    continuously thinner, so each visible column stays a legible width.
+  </p>
+
+  <h2>This docs system</h2>
+  <p>
+    Three parts sharing one 12-column grid: <code>DocsNav</code>
+    (section/page list, left), the article (center), and
+    <code>ArticleToc</code> (right) -- a scroll-spy table of contents that
+    walks the article's headings at runtime and highlights the active
+    section via <code>IntersectionObserver</code> as you scroll.
+  </p>
+</DocsLayout>

@@ -1,0 +1,105 @@
+---
+// Shared shell for every /docs/* page: nav sidebar + article + table of
+// contents, all on one 12-column grid. Individual docs pages just supply
+// their own heading/content markup via the slot. Prev/next pager appears
+// both above and below the article (pattern from this org's own
+// skylence.be docs layout, adapted to this project's components/theme).
+import AppShellLayout from "./AppShellLayout.astro";
+import DocsNav from "../components/docs/DocsNav.astro";
+import DocsPager from "../components/docs/DocsPager.astro";
+import ArticleToc from "../components/docs/ArticleToc.astro";
+import { docsSections, getDocsPrevNext } from "../data/docsNav";
+
+type Props = {
+  title: string;
+  currentSlug: string;
+};
+
+const { title, currentSlug } = Astro.props;
+const { prev, next } = getDocsPrevNext(currentSlug);
+---
+
+<AppShellLayout title={`${title} - CommandCenter Docs`}>
+  <div class="docs-layout">
+    <DocsNav sections={docsSections} currentSlug={currentSlug} />
+    <article class="docs-article" data-docs-article>
+      <DocsPager prev={prev} next={next} />
+      <slot />
+      <DocsPager prev={prev} next={next} />
+    </article>
+    <ArticleToc />
+  </div>
+
+  <style>
+    /* Same 12-column math as the grid overlay (repeat(12, 1fr), 16px gap)
+       so the layout actually lands on the grid lines instead of just
+       looking roughly aligned. Column split mirrors a standard 3/6/3 docs
+       layout: nav / article / toc. */
+    .docs-layout {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 16px;
+      align-items: start;
+    }
+
+    .docs-layout :global(.docs-nav) {
+      grid-column: 1 / span 3;
+      width: auto;
+    }
+
+    .docs-article {
+      grid-column: 4 / span 6;
+      min-width: 0;
+      line-height: 1.65;
+      color: var(--cc-text-secondary);
+    }
+
+    .docs-layout :global(.toc) {
+      grid-column: 10 / -1;
+      width: auto;
+    }
+
+    .docs-article h1 {
+      color: var(--cc-text);
+      margin-bottom: 0.4em;
+    }
+
+    .docs-article h2 {
+      color: var(--cc-text);
+      margin-top: 2.2em;
+      margin-bottom: 0.5em;
+      font-size: 1.3em;
+    }
+
+    .docs-article h3 {
+      color: var(--cc-text);
+      margin-top: 1.6em;
+      margin-bottom: 0.4em;
+      font-size: 1.05em;
+    }
+
+    .docs-article code {
+      font-family: ui-monospace, "SF Mono", monospace;
+      font-size: 0.9em;
+      background: var(--cc-hover-bg);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+      color: var(--cc-text);
+    }
+
+    .docs-article > :global(.docs-pager) {
+      margin: 0 0 24px;
+    }
+
+    .docs-article > :global(.docs-pager:last-child) {
+      margin: 32px 0 0;
+    }
+
+    @media (max-width: 900px) {
+      .docs-layout {
+        display: flex;
+        flex-direction: column;
+      }
+    }
+  </style>
+</AppShellLayout>

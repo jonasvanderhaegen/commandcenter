@@ -1,0 +1,67 @@
+---
+import DocsLayout from "../../../layouts/DocsLayout.astro";
+---
+
+<DocsLayout title="Tools & MCP" currentSlug="ai/mcp">
+  <h1>Tools & MCP</h1>
+  <p>
+    A "tool" is just a function an agent's host can call on the model's
+    behalf: read a file, run a command, query an API (see
+    <a href="/docs/ai/hosts">LLMs vs. LLM hosts</a> for why it's the host
+    doing the calling, not the model itself). The Model Context Protocol
+    (MCP) is the standard for describing those tools so any compatible
+    host can discover and call them the same way.
+  </p>
+
+  <h2>MCP is not a transport layer</h2>
+  <p>
+    The tempting analogy is "MCP is like HTTP/TCP but for LLMs" -- that's
+    wrong. MCP is an <strong>application-layer protocol</strong> for
+    connecting an agent to external capabilities: tools, resources
+    (readable data), and prompts. It's JSON-RPC 2.0 on the wire, and the
+    transport underneath is pluggable -- stdio for a local subprocess,
+    or streamable HTTP for a remote server. MCP sits on top of a
+    transport; it isn't one.
+  </p>
+  <p>
+    The accurate one-liner: <strong>MCP is "LSP for AI agents."</strong>
+    See <a href="/docs/ai/lsp">What is an LSP</a> for the full comparison
+    -- same N&#215;M-to-N+M bet, same JSON-RPC foundation, deliberately
+    modeled on LSP's approach.
+  </p>
+
+  <h2>The three primitives</h2>
+  <ul>
+    <li><strong>Tools</strong> -- the model decides to call these (an <code>edit</code> or <code>grep</code> function, for example).</li>
+    <li><strong>Resources</strong> -- readable data addressed by URI.</li>
+    <li><strong>Prompts</strong> -- user-triggered templates, often surfaced as slash commands.</li>
+  </ul>
+  <p>
+    <code>cc-mcp</code>'s 89 stub tools (see <a href="/docs/mcp-server">
+    MCP server</a>) are all the "Tools" primitive -- each has a name, a
+    description, and a JSON Schema for its parameters, which is the
+    contract a host validates calls against before ever invoking the
+    (currently stubbed) handler.
+  </p>
+
+  <h2>The protocol is replaceable; adoption is what costs you</h2>
+  <p>
+    A tool's actual engine (the logic that does the work) and the
+    protocol that exposes it to an agent are separate layers -- the
+    engine doesn't know or care about MCP. You could invent your own
+    protocol instead, and people did exactly that before MCP existed.
+    The catch: no existing host knows how to speak your invented
+    protocol, so you'd end up writing a shim that translates it into
+    something hosts already understand -- which is the integration tax
+    MCP exists to kill in the first place. MCP's value is the network
+    effect, not the technical design.
+  </p>
+
+  <h2>stdio vs. HTTP</h2>
+  <p>
+    stdio transport (newline-delimited JSON, or Content-Length-framed
+    JSON-RPC) suits a tool spawned as a local child process by the host.
+    HTTP transport suits a long-running server other tools connect to
+    over the network. <code>cc-mcp</code> supports both.
+  </p>
+</DocsLayout>

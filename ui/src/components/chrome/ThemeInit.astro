@@ -1,12 +1,17 @@
 ---
-// Theme bootstrap. Must run blocking, in <head>, before first paint (no
-// flash of wrong theme -- https://timomeh.de/posts/...-no-flash). Reads the
-// stored mode ("light" | "dark" | "system") from localStorage, resolves it
-// against prefers-color-scheme when "system", and sets data-theme on <html>.
-// Exposes window.__ccTheme.set(mode) for UI controls, and re-resolves live
-// when the OS scheme changes while mode is "system". Also syncs the native
-// Tauri window theme (Windows + macOS) via getCurrentWindow().setTheme() so
-// non-web chrome (native menus/dialogs) matches.
+// Bootstrap script. Must run blocking, in <head>, before first paint (no
+// flash of wrong state -- https://timomeh.de/posts/...-no-flash).
+//
+// Theme: reads the stored mode ("light" | "dark" | "system") from
+// localStorage, resolves it against prefers-color-scheme when "system", and
+// sets data-theme on <html>. Exposes window.__ccTheme.set(mode) for UI
+// controls, and re-resolves live when the OS scheme changes while mode is
+// "system". Also syncs the native Tauri window theme (Windows + macOS) via
+// getCurrentWindow().setTheme() so non-web chrome (native menus/dialogs)
+// matches.
+//
+// Sidebar collapse: reads the stored collapsed flag and sets the
+// html.sidebar-collapsed class before paint. Exposes window.__ccSidebar.
 ---
 
 <script is:inline>
@@ -61,5 +66,40 @@
     });
 
     window.__ccTheme = { set: set, get: currentMode };
+  })();
+
+  (function () {
+    var STORAGE_KEY = "cc-sidebar-collapsed";
+
+    function isCollapsed() {
+      try {
+        return localStorage.getItem(STORAGE_KEY) === "true";
+      } catch (e) {
+        return false;
+      }
+    }
+
+    function apply(collapsed) {
+      document.documentElement.classList.toggle("sidebar-collapsed", collapsed);
+      document.dispatchEvent(
+        new CustomEvent("cc-sidebar-change", { detail: { collapsed: collapsed } })
+      );
+    }
+
+    function set(collapsed) {
+      try {
+        localStorage.setItem(STORAGE_KEY, String(collapsed));
+      } catch (e) {}
+      apply(collapsed);
+    }
+
+    apply(isCollapsed());
+
+    window.__ccSidebar = {
+      toggle: function () {
+        set(!isCollapsed());
+      },
+      get: isCollapsed,
+    };
   })();
 </script>

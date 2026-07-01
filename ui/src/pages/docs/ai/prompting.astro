@@ -1,0 +1,45 @@
+---
+import DocsLayout from "../../../layouts/DocsLayout.astro";
+---
+
+<DocsLayout title="Prompting basics" currentSlug="ai/prompting">
+  <h1>Prompting basics</h1>
+  <p>
+    For agentic coding work specifically (not just chat), the prompt that
+    matters most isn't the first message -- it's the ongoing context you
+    give the agent as it works: what files matter, what constraints apply,
+    and what "done" looks like.
+  </p>
+
+  <h2>Be concrete about the goal</h2>
+  <p>
+    "Fix the bug" gives an agent nothing to verify against. "Fix the bug
+    where X happens when Y, confirmed by running Z" gives it a repro and a
+    pass/fail check. Agents do better with a falsifiable target than with
+    a vague direction, for the same reason people do.
+  </p>
+
+  <h2>Say what NOT to do</h2>
+  <p>
+    Scope is often the actual failure mode -- an agent asked to fix one
+    thing refactors three others along the way. Explicit constraints
+    ("don't touch the auth module", "no new dependencies") cut down on
+    that more reliably than hoping the model infers your intent.
+  </p>
+
+  <h2>Give it a way to check its own work</h2>
+  <p>
+    If there's a test suite, a type checker, or a build step, say so and
+    expect the agent to run it. An agent that can verify its own output
+    catches its own mistakes; one that can't just reports success and
+    moves on.
+  </p>
+
+  <h2>Context beats cleverness</h2>
+  <p>
+    A model told "here are the three files this touches and here's why
+    they're structured this way" outperforms one given a cleverly-worded
+    one-liner and no context. Point it at the relevant code and docs
+    before asking it to write more code.
+  </p>
+</DocsLayout>

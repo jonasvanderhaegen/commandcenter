@@ -1,0 +1,40 @@
+---
+import DocsLayout from "../../../layouts/DocsLayout.astro";
+---
+
+<DocsLayout title="What is an AI coding agent" currentSlug="ai/agents">
+  <h1>What is an AI coding agent</h1>
+  <p>
+    An AI coding agent is a large language model given tools -- typically a
+    file system, a shell, and sometimes a browser -- and let loose on a
+    task with some autonomy over how it gets there. The model reads code,
+    decides what to change, makes the change, and checks the result, in a
+    loop, rather than just answering a question in a chat window.
+  </p>
+
+  <h2>Agent vs. autocomplete</h2>
+  <p>
+    Inline autocomplete (predicting the next few lines as you type) and an
+    agent (given a task, it plans, edits multiple files, runs commands,
+    and iterates) are different tools for different jobs. Autocomplete
+    stays in your loop; an agent runs ahead of it and reports back.
+  </p>
+
+  <h2>The read-plan-act-verify loop</h2>
+  <p>
+    Most agent frameworks converge on the same shape: read enough context
+    to understand the task, form a plan, take an action (edit a file, run
+    a command), observe the result, and repeat until the task looks done
+    or it needs to ask for help. The "verify" step -- actually running
+    tests or checking output, not just assuming the edit worked -- is
+    what separates a useful agent from one that confidently breaks things.
+  </p>
+
+  <h2>Why credentials matter</h2>
+  <p>
+    An agent with shell access can do anything you could do from a
+    terminal. That's the whole point, and also the reason CommandCenter
+    keeps agent credentials in an encrypted store rather than plaintext
+    env files -- see <a href="/docs/credentials">Credential store</a>.
+  </p>
+</DocsLayout>

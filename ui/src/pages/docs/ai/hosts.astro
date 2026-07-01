@@ -1,0 +1,67 @@
+---
+import DocsLayout from "../../../layouts/DocsLayout.astro";
+---
+
+<DocsLayout title="LLMs vs. LLM hosts" currentSlug="ai/hosts">
+  <h1>LLMs vs. LLM hosts</h1>
+  <p>
+    A raw model is a function: tokens in, tokens out. It cannot open a
+    file, run a shell command, or make a network call -- it only emits
+    text. Everything that looks like "the AI did something on my
+    computer" is actually the <strong>host</strong> around the model
+    doing that work, driven by text the model produced.
+  </p>
+  <p>
+    Claude Code, Codex, Pi, and Hermes are all hosts. They read the
+    model's output, recognize "this looks like a tool call," actually
+    make that call (open the file, run the command, hit the MCP server),
+    and feed the result back to the model as more text. The model never
+    touches your filesystem directly.
+  </p>
+
+  <h2>The browser analogy</h2>
+  <p>
+    Asking "does this model know MCP?" is a category error, in the same
+    way "does this CPU know HTTP?" is. The CPU runs the browser; the
+    browser knows HTTP. The model is the CPU-equivalent here: it runs
+    inside a host, and the host is what actually speaks the protocols
+    (MCP, function-calling, whatever) that let it act on the world.
+  </p>
+
+  <h2>What a model actually needs</h2>
+  <p>
+    Two things, and neither of them is "understanding MCP":
+  </p>
+  <ol>
+    <li>
+      <strong>Tool-calling ability</strong> -- a training property. The
+      model has to reliably emit a structured call when shown a tool's
+      schema. Instruct-tuned models are trained for this; a raw base
+      model generally isn't.
+    </li>
+    <li>
+      <strong>A host that bridges</strong> -- something that shows the
+      model the available tools, parses its output for a call, executes
+      that call for real, and returns the result as text the model can
+      read.
+    </li>
+  </ol>
+  <p>
+    Tool-capable model + capable host = the combination can drive tools
+    (including MCP tools, like the ones <a href="/docs/mcp-server">
+    <code>cc-mcp</code></a> exposes). The model isn't "knowing" the
+    protocol; the host is translating between text and protocol on its
+    behalf.
+  </p>
+
+  <h2>Capability is a spectrum</h2>
+  <p>
+    Tool-calling reliability tracks model size and training, not a
+    binary "supports MCP" flag: large instruct-tuned models handle
+    multi-step tool use fairly reliably, small instruct models produce
+    malformed or hallucinated calls more often, and non-instruct base
+    models are effectively unusable for this without heavy scaffolding.
+    The protocol always works, because it lives in the host -- whether
+    the model uses it well is a separate question entirely.
+  </p>
+</DocsLayout>

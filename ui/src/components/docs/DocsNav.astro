@@ -1,0 +1,168 @@
+---
+// Docs section/page nav -- the third part of the docs layout alongside the
+// article and the on-page table of contents. Each section is a collapsible
+// group (own accordion implementation: chevron rotates, height animates via
+// grid-template-rows so no JS height measurement is needed). The section
+// containing the current page starts expanded; others start collapsed.
+type Page = { slug: string; title: string };
+type Section = { label: string; pages: Page[] };
+
+type Props = {
+  sections: Section[];
+  currentSlug: string;
+};
+
+const { sections, currentSlug } = Astro.props;
+---
+
+<nav class="docs-nav" aria-label="Documentation navigation">
+  {
+    sections.map((section, i) => {
+      const containsCurrent = section.pages.some((p) => p.slug === currentSlug);
+      return (
+        <div class="docs-nav__group" data-expanded={containsCurrent ? "true" : "false"}>
+          <button type="button" class="docs-nav__group-toggle" data-docs-nav-toggle>
+            <span class="docs-nav__label">{section.label}</span>
+            <svg class="docs-nav__chevron" viewBox="0 0 10 10" aria-hidden="true">
+              <path d="M2.5 3.5L5 6.5l2.5-3" />
+            </svg>
+          </button>
+          <div class="docs-nav__collapse">
+            <ul class="docs-nav__items">
+              {section.pages.map((page) => (
+                <li>
+                  <a
+                    href={page.slug ? `/docs/${page.slug}` : "/docs"}
+                    class="docs-nav__link"
+                    aria-current={page.slug === currentSlug ? "page" : undefined}
+                    data-active={page.slug === currentSlug}
+                  >
+                    {page.title}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      );
+    })
+  }
+</nav>
+
+<style>
+  .docs-nav {
+    width: 180px;
+    flex-shrink: 0;
+    position: sticky;
+    top: 32px;
+    align-self: flex-start;
+  }
+
+  .docs-nav__group + .docs-nav__group {
+    margin-top: 4px;
+  }
+
+  .docs-nav__group-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 6px 4px;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    text-align: left;
+  }
+
+  .docs-nav__label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--cc-text-muted);
+  }
+
+  .docs-nav__chevron {
+    width: 9px;
+    height: 9px;
+    stroke: var(--cc-text-muted);
+    stroke-width: 1.4;
+    fill: none;
+    transform: rotate(-90deg);
+    transition: transform 0.2s cubic-bezier(0.625, 0.05, 0, 1);
+  }
+
+  .docs-nav__group[data-expanded="true"] .docs-nav__chevron {
+    transform: rotate(0deg);
+  }
+
+  /* Height-animated collapse via grid-template-rows -- no JS height
+     measurement needed, and it works with intrinsic/variable content
+     height (unlike a max-height hack). */
+  .docs-nav__collapse {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.25s cubic-bezier(0.625, 0.05, 0, 1);
+  }
+
+  .docs-nav__group[data-expanded="true"] .docs-nav__collapse {
+    grid-template-rows: 1fr;
+  }
+
+  .docs-nav__collapse > .docs-nav__items {
+    overflow: hidden;
+  }
+
+  .docs-nav__items {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+
+  .docs-nav__link {
+    display: block;
+    padding: 6px 8px;
+    border-radius: 6px;
+    font-size: 13px;
+    color: var(--cc-text-secondary);
+    text-decoration: none;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+
+  .docs-nav__link:hover {
+    background: var(--cc-hover-bg);
+    color: var(--cc-text);
+  }
+
+  .docs-nav__link[data-active="true"] {
+    background: var(--cc-active-bg);
+    color: var(--cc-text);
+  }
+
+  @media (max-width: 900px) {
+    .docs-nav {
+      display: none;
+    }
+  }
+</style>
+
+<script is:inline>
+  (function () {
+    function wire() {
+      document.querySelectorAll("[data-docs-nav-toggle]").forEach(function (btn) {
+        if (btn.dataset.wired === "true") return;
+        btn.dataset.wired = "true";
+        btn.addEventListener("click", function () {
+          var group = btn.closest(".docs-nav__group");
+          if (!group) return;
+          var expanded = group.dataset.expanded === "true";
+          group.dataset.expanded = String(!expanded);
+        });
+      });
+    }
+    wire();
+    document.addEventListener("astro:page-load", wire);
+  })();
+</script>

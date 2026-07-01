@@ -1,0 +1,29 @@
+---
+import DocsLayout from "../../layouts/DocsLayout.astro";
+---
+
+<DocsLayout title="MCP server" currentSlug="mcp-server">
+  <h1>MCP server</h1>
+  <p>
+    <code>src-tauri/crates/cc-mcp</code> exposes CommandCenter's tool
+    surface over MCP (stdio and HTTP) for external clients, built on the
+    <code>rmcp</code> crate. The Tauri app spawns it on its own thread at
+    startup, listening on <code>127.0.0.1:7080</code>.
+  </p>
+
+  <h2>Stub tools</h2>
+  <p>
+    It currently ships 89 stub tools mirroring Solo's full tool surface,
+    across nine domains: Session, Projects, Processes, Scratchpads, Todos,
+    Locks, Timers, Prompt Templates, and Feedback. Every tool has a
+    complete parameter schema and is discoverable via <code>tools/list</code>,
+    but handlers return "Not yet implemented."
+  </p>
+
+  <h2>Transport</h2>
+  <p>
+    Supports both a dual-framing stdio transport (newline-delimited JSON
+    for Claude Code/Cursor, Content-Length-framed JSON-RPC for
+    Codex/OpenCode) and a streamable HTTP transport.
+  </p>
+</DocsLayout>

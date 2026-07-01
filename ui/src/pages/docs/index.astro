@@ -1,0 +1,91 @@
+---
+import DocsLayout from "../../layouts/DocsLayout.astro";
+---
+
+<DocsLayout title="Introduction" currentSlug="">
+  <h1>CommandCenter Docs</h1>
+  <p>
+    CommandCenter is a terminal-of-terminals and agent orchestrator: one
+    window that hosts many projects, each with its own processes,
+    terminals, and AI agents. These pages are a starter for real
+    documentation as the app gets built out.
+  </p>
+
+  <h2>Current status</h2>
+  <p>
+    This is an early skeleton. <code>list_projects</code> and
+    <code>list_processes</code> return placeholder data; there is no real
+    process engine wired up yet. The app shell (sidebar, search modal,
+    theming) is functional; the underlying orchestration is not.
+  </p>
+
+  <h2>Where to go next</h2>
+  <div class="docs-blocks">
+    <a class="docs-block" href="/docs/ai/agents">
+      <span class="docs-block__label">AI Fundamentals</span>
+      <span class="docs-block__title">What is an AI coding agent</span>
+      <span class="docs-block__desc">
+        The agent loop, prompting basics, and how MCP tools fit in --
+        general concepts, not CommandCenter-specific.
+      </span>
+    </a>
+    <a class="docs-block" href="/docs/projects">
+      <span class="docs-block__label">About CommandCenter</span>
+      <span class="docs-block__title">Projects, processes, and agents</span>
+      <span class="docs-block__desc">
+        How this application is actually put together: the credential
+        store, the MCP server, the app shell, and what's still a stub.
+      </span>
+    </a>
+  </div>
+
+  <style>
+    .docs-blocks {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .docs-block {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 16px;
+      border: 1px solid var(--cc-border);
+      border-radius: 10px;
+      text-decoration: none;
+      transition: background 0.15s ease, border-color 0.15s ease;
+    }
+
+    .docs-block:hover {
+      background: var(--cc-hover-bg);
+      border-color: var(--cc-border-strong);
+    }
+
+    .docs-block__label {
+      font-size: 0.7em;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--cc-accent);
+    }
+
+    .docs-block__title {
+      font-size: 1.05em;
+      font-weight: 600;
+      color: var(--cc-text);
+    }
+
+    .docs-block__desc {
+      font-size: 0.85em;
+      line-height: 1.5;
+      color: var(--cc-text-muted);
+    }
+
+    @media (max-width: 600px) {
+      .docs-blocks {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</DocsLayout>
