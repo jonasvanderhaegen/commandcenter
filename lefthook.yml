@@ -35,10 +35,10 @@ pre-commit:
       run: cargo fmt --all --manifest-path src-tauri/Cargo.toml -- --check
 
 pre-push:
-  parallel: true
   jobs:
     - name: check
       run: vp check
-    - name: clippy
-      root: "src-tauri/"
-      run: cargo clippy --workspace --all-targets -- -D warnings
+    # Rust clippy is intentionally CI-only: `cargo clippy --workspace` compiles
+    # the whole Tauri dependency tree, too heavy for the local 8GB box (which has
+    # no sccache/R2 cache). CI runs it with sccache; `rustfmt` still gates Rust
+    # formatting at pre-commit.
