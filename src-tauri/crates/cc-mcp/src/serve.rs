@@ -40,8 +40,12 @@ pub async fn serve_http_with_bus(bind: &str, port: u16, bus: crate::EventBus) ->
     };
     use std::sync::Arc;
 
+    // Build each MCP session's server with the shared bus so tool calls (e.g.
+    // set_odometer) publish to the same subscribers as /ws/events and the
+    // WebTransport endpoint.
+    let mcp_bus = bus.clone();
     let service = StreamableHttpService::new(
-        || Ok(CcMcpServer::new()),
+        move || Ok(CcMcpServer::with_bus(mcp_bus.clone())),
         Arc::new(LocalSessionManager::default()),
         StreamableHttpServerConfig::default(),
     );

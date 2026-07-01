@@ -1,0 +1,239 @@
+---
+// Landing-page number odometer, driven live by the event bus.
+//
+// A rolling-digit counter adapted from Osmo's "Number Odometer" (each digit is
+// a masked vertical 0-9 strip translated to the target digit; non-digit
+// characters stay static). Reworked as a CSS-transition roller with no GSAP,
+// and driven by the event bus instead of scroll: the `set_odometer` MCP tool
+// (src-tauri/crates/cc-mcp) publishes on topic "odometer" and the value arrives
+// here over WebTransport (when the webview supports it) or WebSocket otherwise
+// -- both feed the same window.__ccEvents subscription (see EventBusInit.astro).
+//
+// The page subscribes when it enters (astro:page-load, if #cc-odometer is in
+// the DOM) and unsubscribes when it leaves (astro:before-swap), mirroring the
+// AppSidebar re-wiring pattern for Astro's ClientRouter.
+---
+
+<div class="odometer-card">
+  <p class="odometer-card__label">
+    Live value
+    <span class="odometer-card__hint">set via the <code>set_odometer</code> MCP tool &rarr; event bus</span>
+  </p>
+
+  <div
+    id="cc-odometer"
+    class="odometer"
+    role="status"
+    aria-live="polite"
+    aria-label="0"
+    data-value="0"
+  >
+  </div>
+
+  <p class="odometer-card__status" data-odometer-status>Waiting for the first update&hellip;</p>
+</div>
+
+<style>
+  .odometer-card {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-top: 28px;
+    padding: 28px 32px;
+    background: var(--cc-surface);
+    border: 1px solid var(--cc-border);
+    border-radius: 14px;
+  }
+
+  .odometer-card__label {
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    font-size: 15px;
+    color: var(--cc-text-secondary);
+  }
+
+  .odometer-card__hint {
+    font-size: 13px;
+    color: var(--cc-text-muted);
+  }
+
+  .odometer-card__hint code {
+    font-family: ui-monospace, "SF Mono", monospace;
+    color: var(--cc-accent);
+  }
+
+  .odometer-card__status {
+    margin: 0;
+    font-size: 13px;
+    color: var(--cc-text-muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* The digit columns/strips are built in JS, so they never carry Astro's
+     scope hash -- reach them with :global() under the template-scoped root. */
+  .odometer {
+    display: inline-flex;
+    align-items: stretch;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+    font-size: 4.5rem;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--cc-text);
+  }
+
+  .odometer :global(.odometer__col) {
+    position: relative;
+    height: 1em;
+    overflow: hidden;
+  }
+
+  .odometer :global(.odometer__strip) {
+    display: flex;
+    flex-direction: column;
+    /* Same "osmo" ease the sidebar/nav use elsewhere in this app. */
+    transition: transform 0.85s cubic-bezier(0.625, 0.05, 0, 1);
+    will-change: transform;
+  }
+
+  .odometer :global(.odometer__digit),
+  .odometer :global(.odometer__static) {
+    height: 1em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .odometer :global(.odometer__strip) {
+      transition: none;
+    }
+  }
+</style>
+
+<script>
+  // Module script: evaluated once and preserved across Astro view transitions
+  // (like EventBusInit), so the astro:page-load / astro:before-swap listeners
+  // below are registered exactly once. enter()'s own guard keeps the immediate
+  // call and the first page-load from double-subscribing.
+  function createOdometer(root: HTMLElement) {
+    let signature = "";
+    let strips: (HTMLElement | null)[] = [];
+
+    // 'layout' = digit positions collapsed to '#', literals kept, so we only
+    // rebuild the DOM when the shape changes (e.g. 9 -> 10), not on every tick.
+    const layoutOf = (s: string) =>
+      s.replace(/[0-9]/g, "#");
+
+    function build(str: string) {
+      root.textContent = "";
+      strips = [];
+      for (const ch of str) {
+        if (ch >= "0" && ch <= "9") {
+          const col = document.createElement("span");
+          col.className = "odometer__col";
+          const strip = document.createElement("span");
+          strip.className = "odometer__strip";
+          for (let d = 0; d <= 9; d++) {
+            const digit = document.createElement("span");
+            digit.className = "odometer__digit";
+            digit.textContent = String(d);
+            strip.appendChild(digit);
+          }
+          col.appendChild(strip);
+          root.appendChild(col);
+          strips.push(strip);
+        } else {
+          const stat = document.createElement("span");
+          stat.className = "odometer__static";
+          stat.textContent = ch;
+          root.appendChild(stat);
+          strips.push(null);
+        }
+      }
+      signature = layoutOf(str);
+    }
+
+    function applyDigits(str: string) {
+      let i = 0;
+      for (const ch of str) {
+        const strip = strips[i];
+        if (strip && ch >= "0" && ch <= "9") {
+          strip.style.transform = `translateY(-${Number(ch)}em)`;
+        }
+        i++;
+      }
+    }
+
+    function set(value: number) {
+      const str = String(value);
+      const rebuilt = layoutOf(str) !== signature;
+      if (rebuilt) build(str);
+      // On a rebuild the strips start at digit 0; wait one frame before moving
+      // them so the transition actually animates from 0 to the target.
+      if (rebuilt) requestAnimationFrame(() => applyDigits(str));
+      else applyDigits(str);
+      root.dataset.value = str;
+      root.setAttribute("aria-label", str);
+    }
+
+    return { set };
+  }
+
+  (function () {
+    type CcEvents = {
+      subscribe: (topic: string, fn: (data: unknown, topic: string) => void) => () => void;
+      status: () => { ws: string; webtransport: string };
+    };
+
+    let unsubscribe: (() => void) | null = null;
+
+    function transportLabel(bus: CcEvents) {
+      const s = bus.status ? bus.status() : { ws: "", webtransport: "" };
+      if (s.webtransport === "connected") return "via WebTransport";
+      if (s.ws === "connected") return "via WebSocket";
+      return "";
+    }
+
+    function enter() {
+      const root = document.getElementById("cc-odometer");
+      if (!root || unsubscribe) return;
+      const bus = (window as unknown as { __ccEvents?: CcEvents }).__ccEvents;
+      // EventBusInit's module script may not have run yet on the very first
+      // paint; retry shortly. The `unsubscribe` guard prevents a double-sub.
+      if (!bus) {
+        setTimeout(enter, 100);
+        return;
+      }
+
+      const od = createOdometer(root);
+      od.set(Number(root.dataset.value) || 0);
+      const status = document.querySelector<HTMLElement>("[data-odometer-status]");
+
+      unsubscribe = bus.subscribe("odometer", (data) => {
+        const raw =
+          data && typeof data === "object" ? (data as { value?: unknown }).value : data;
+        const n = Number(raw);
+        if (Number.isNaN(n)) return;
+        od.set(n);
+        if (status) {
+          const how = transportLabel(bus);
+          status.textContent = how ? `Updated to ${n} · ${how}` : `Updated to ${n}`;
+        }
+      });
+    }
+
+    function leave() {
+      if (unsubscribe) {
+        unsubscribe();
+        unsubscribe = null;
+      }
+    }
+
+    enter();
+    document.addEventListener("astro:page-load", enter);
+    document.addEventListener("astro:before-swap", leave);
+  })();
+</script>

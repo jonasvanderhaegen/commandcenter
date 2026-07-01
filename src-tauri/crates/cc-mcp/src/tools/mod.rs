@@ -1,5 +1,6 @@
 pub mod feedback;
 pub mod locks;
+pub mod odometer;
 pub mod processes;
 pub mod projects;
 pub mod prompt_templates;
@@ -33,4 +34,11 @@ pub fn not_implemented(reason: &str) -> CallToolResult {
     CallToolResult::error(vec![Content::text(format!(
         "Not yet implemented: {reason}"
     ))])
+}
+
+/// Return a successful tool result carrying a single line of text. For the
+/// handful of tools that are actually implemented (e.g. `odometer`).
+#[must_use]
+pub fn ok(message: impl Into<String>) -> CallToolResult {
+    CallToolResult::success(vec![Content::text(message.into())])
 }

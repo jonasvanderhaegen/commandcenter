@@ -5,17 +5,23 @@ use rmcp::{
     tool, tool_handler, tool_router,
 };
 
+use crate::EventBus;
 use crate::tools;
 use crate::tools::McpTool as _;
 
 /// CommandCenter's Solo-compatible MCP server.
 ///
-/// Every tool below is a stub: the schema is wired up and registered with the
-/// MCP router so clients can discover and call it, but the handler has no
-/// implementation yet and always returns a "not yet implemented" error.
+/// Most tools below are stubs: the schema is registered with the MCP router so
+/// clients can discover and call them, but the handler returns a "not yet
+/// implemented" error. The exception is `set_odometer`, which publishes to the
+/// shared [`EventBus`] (see [`CcMcpServer::with_bus`]) to drive the landing demo.
 #[derive(Clone)]
 pub struct CcMcpServer {
     tool_router: rmcp::handler::server::router::tool::ToolRouter<CcMcpServer>,
+    /// Shared pub/sub bus. Tools publish here; the WS/WebTransport servers
+    /// relay to subscribed frontends. An unconnected default bus in stdio
+    /// mode, the process-wide bus when embedded via `serve_http_with_bus`.
+    bus: EventBus,
 }
 
 impl Default for CcMcpServer {
@@ -28,8 +34,16 @@ impl Default for CcMcpServer {
 impl CcMcpServer {
     #[must_use]
     pub fn new() -> Self {
+        Self::with_bus(EventBus::default())
+    }
+
+    /// Build a server whose tools publish to `bus`, so tool calls reach the
+    /// same subscribers as the WebSocket/WebTransport event servers.
+    #[must_use]
+    pub fn with_bus(bus: EventBus) -> Self {
         Self {
             tool_router: Self::tool_router(),
+            bus,
         }
     }
 
@@ -831,6 +845,20 @@ impl CcMcpServer {
     ) -> CallToolResult {
         tools::not_implemented(tools::feedback::SubmitFeedbackTool::NAME)
     }
+
+    // ── Demo: event-bus number odometer ─────────────────────────────────
+
+    #[tool(
+        description = "Set the landing-page number odometer to a value and broadcast it on the event bus (topic \"odometer\") to every subscribed frontend."
+    )]
+    async fn set_odometer(
+        &self,
+        Parameters(p): Parameters<tools::odometer::SetOdometerParams>,
+    ) -> CallToolResult {
+        self.bus
+            .publish("odometer", serde_json::json!({ "value": p.value }));
+        tools::ok(format!("Odometer set to {}", p.value))
+    }
 }
 
 #[tool_handler(router = self.tool_router)]
@@ -838,9 +866,33 @@ impl ServerHandler for CcMcpServer {
     fn get_info(&self) -> ServerInfo {
         ServerInfo::new(ServerCapabilities::builder().enable_tools().build())
             .with_instructions(
-                "All tools on this server are stubs registered against CommandCenter's \
-                 Solo-compatible tool surface. Every call returns a 'Not yet implemented' error.",
+                "Tools on this server are registered against CommandCenter's \
+                 Solo-compatible tool surface. Most are stubs that return a 'Not \
+                 yet implemented' error; `set_odometer` is live and drives the \
+                 landing-page odometer demo over the event bus.",
             )
             .with_server_info(Implementation::new("cc-mcp", env!("CARGO_PKG_VERSION")))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::tools::odometer::SetOdometerParams;
+
+    #[tokio::test]
+    async fn set_odometer_publishes_value_on_topic() {
+        let bus = EventBus::default();
+        let mut rx = bus.subscribe();
+        let server = CcMcpServer::with_bus(bus);
+
+        let result = server
+            .set_odometer(Parameters(SetOdometerParams { value: 42.0 }))
+            .await;
+        assert!(!result.is_error.unwrap_or(false));
+
+        let event = rx.recv().await.expect("event published");
+        assert_eq!(event.topic, "odometer");
+        assert_eq!(event.data["value"], serde_json::json!(42.0));
     }
 }
