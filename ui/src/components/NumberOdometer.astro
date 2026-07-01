@@ -164,28 +164,29 @@
   // (like EventBusInit), so the astro:page-load / astro:before-swap listeners
   // below are registered exactly once. enter()'s own guard keeps the immediate
   // call and the first page-load from double-subscribing.
-  // Osmo Number Odometer, adapted to vanilla + the Web Animations API (no GSAP)
-  // and driven by the event bus instead of scroll. The roll always starts from
-  // the CURRENTLY displayed value: each digit's roller is seeded at the current
-  // digit and animated forward to the target. Rollers repeat 0-9 twice so a
-  // decrease still rolls forward (wrapping through the second cycle) instead of
-  // reversing or snapping.
+  // Number odometer, adapted to vanilla + the Web Animations API (no GSAP) and
+  // driven by the event bus. Each update rolls from the CURRENTLY displayed
+  // value like a real counter: unchanged digits stay put, and changed digits
+  // roll in the direction of the change -- up when the value increases, down
+  // when it decreases -- wrapping only on a genuine carry (e.g. 9->0 on an
+  // increase). Each roller is a 0-9 ribbon repeated 3x with the start digit
+  // seeded in the middle cycle, leaving room to roll either way.
   function createOdometer(root: HTMLElement) {
     const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const CYCLES = 2;
-    const DURATION = 900;
     const EASE = "cubic-bezier(0.16, 1, 0.3, 1)"; // ~power3.out
-    const DIGIT_STAGGER = 55; // ms between digits, rolling right-to-left
     let current = ""; // last displayed string; "" until the first render
 
     const isDigit = (ch: string) => ch >= "0" && ch <= "9";
+    const digitCount = (n: number) => String(Math.abs(Math.trunc(n || 0))).length;
 
     function set(value: number) {
       const num = Number(value);
       if (!Number.isFinite(num)) return;
       const target = String(num);
       if (target === current) return;
-      const animate = current !== "" && !reduce;
+      const prev = Number(current); // NaN on the first render
+      const animate = current !== "" && Number.isFinite(prev) && !reduce;
+      const up = !(num < prev); // increases (and the first render) roll up
 
       // Seed each column from the digits currently shown, padded to the new
       // digit count so freshly grown columns still have a start to roll from.
@@ -195,8 +196,18 @@
         .padStart(digitSlots, "0")
         .slice(-digitSlots);
 
+      // The bigger the jump in digit count (small -> very large, or the
+      // reverse), the more extra full rotations every column spins before
+      // landing -- a dynamic "spin-up". Same-width changes (e.g. 10 -> 11) get
+      // no extra spins and stay crisp. The ribbon is padded on both sides so a
+      // spin fits whichever way it rolls; the start digit sits in the middle.
+      const spins = animate ? Math.min(3, Math.abs(digitSlots - digitCount(prev))) : 0;
+      const pad = spins + 1;
+      const cellCount = (2 * pad + 1) * 10;
+      const mid = pad * 10;
+
       root.textContent = "";
-      const rollers: { roller: HTMLElement; from: number; to: number }[] = [];
+      const rollers: { roller: HTMLElement; seed: number; dest: number; dist: number }[] = [];
       let di = 0;
       for (const ch of target) {
         if (!isDigit(ch)) {
@@ -211,27 +222,38 @@
         const roller = document.createElement("span");
         roller.className = "odometer__strip";
         const cells: number[] = [];
-        for (let c = 0; c < CYCLES; c++) for (let d = 0; d <= 9; d++) cells.push(d);
+        for (let i = 0; i < cellCount; i++) cells.push(i % 10);
         roller.textContent = cells.join("\n");
         mask.appendChild(roller);
         root.appendChild(mask);
 
         const startDigit = Number(paddedStart[di]);
         const endDigit = Number(ch);
-        // Always roll forward: if the target isn't strictly higher, wrap into
-        // the second 0-9 cycle so it rolls down through the wrap, not backward.
-        const to = endDigit > startDigit ? endDigit : 10 + endDigit;
-        rollers.push({ roller, from: startDigit, to });
+        // Steps to the target in the chosen direction, plus the spin-up spins.
+        // A total distance of 0 means the digit is unchanged -> it stays put.
+        const steps = up
+          ? (endDigit - startDigit + 10) % 10
+          : (startDigit - endDigit + 10) % 10;
+        const dist = steps + spins * 10;
+        const seed = mid + startDigit; // ribbon index currently shown
+        const dest = up ? seed + dist : seed - dist; // lands on endDigit
+        rollers.push({ roller, seed, dest, dist });
         di++;
       }
 
-      rollers.forEach(({ roller, from, to }, idx) => {
-        roller.style.transform = `translateY(-${animate ? to : to % 10}em)`;
-        if (!animate || from === to) return;
-        const delay = (rollers.length - 1 - idx) * DIGIT_STAGGER;
+      // Scale roll time and the digit cascade with the biggest distance rolled,
+      // so a small tick is snappy but a big jump feels weighty.
+      const maxDist = rollers.reduce((m, r) => Math.max(m, r.dist), 0);
+      const duration = Math.min(1400, 380 + 26 * maxDist);
+      const stagger = Math.min(80, 30 + rollers.length * 7);
+
+      rollers.forEach(({ roller, seed, dest, dist }, idx) => {
+        roller.style.transform = `translateY(-${dest}em)`;
+        if (!animate || dist === 0) return;
+        const delay = (rollers.length - 1 - idx) * stagger;
         roller.animate(
-          [{ transform: `translateY(-${from}em)` }, { transform: `translateY(-${to}em)` }],
-          { duration: DURATION, easing: EASE, delay, fill: "backwards" },
+          [{ transform: `translateY(-${seed}em)` }, { transform: `translateY(-${dest}em)` }],
+          { duration, easing: EASE, delay, fill: "backwards" },
         );
       });
 
