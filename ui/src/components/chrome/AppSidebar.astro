@@ -1,0 +1,502 @@
+---
+// Left app sidebar: a fixed rail on desktop, a full-screen overlay panel on
+// narrow viewports (toggled by the hamburger button). The account row at the
+// bottom opens a menu upward (transform-origin: bottom) since there's no room
+// below it, and shows on hover/focus rather than click.
+---
+
+<button
+  type="button"
+  class="sidebar-toggle"
+  id="sidebarToggle"
+  aria-label="Toggle menu"
+  aria-expanded="false"
+  aria-controls="appSidebar"
+>
+  <span class="sidebar-toggle__icon" aria-hidden="true"></span>
+</button>
+
+<div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+<aside class="sidebar" id="appSidebar">
+  <div class="sidebar__brand">
+    <span class="sidebar__brand-mark" aria-hidden="true">&gt;_</span>
+    <span class="sidebar__brand-name">CommandCenter</span>
+  </div>
+
+  <nav class="sidebar__nav" aria-label="Primary">
+    <a href="/" class="sidebar__item sidebar__item--active">
+      <span class="sidebar__item-icon" aria-hidden="true">&#9670;</span>
+      <span>Projects</span>
+    </a>
+    <div class="sidebar__group">
+      <a class="sidebar__subitem" href="#">Processes</a>
+      <a class="sidebar__subitem" href="#">Agents</a>
+      <a class="sidebar__subitem" href="#">Terminals</a>
+    </div>
+  </nav>
+
+  <div class="sidebar__secondary">
+    <a class="sidebar__item" href="#">
+      <span class="sidebar__item-icon" aria-hidden="true">&#9636;</span>
+      <span>Templates</span>
+    </a>
+    <a class="sidebar__item" href="#">
+      <span class="sidebar__item-icon" aria-hidden="true">&#9636;</span>
+      <span>Docs</span>
+    </a>
+  </div>
+
+  <div class="sidebar__account">
+    <button
+      type="button"
+      class="sidebar__account-trigger"
+      id="accountToggle"
+      aria-haspopup="true"
+      aria-expanded="false"
+      aria-controls="accountMenu"
+    >
+      <span class="sidebar__account-avatar" aria-hidden="true">C</span>
+      <span class="sidebar__account-name">CommandCenter</span>
+      <span class="sidebar__account-kebab" aria-hidden="true">&#8942;</span>
+    </button>
+
+    <div class="sidebar__account-menu" id="accountMenu" role="menu">
+      <div class="sidebar__theme-row">
+        <span>Appearance</span>
+        <div class="sidebar__theme-switch" role="radiogroup" aria-label="Theme" style={`--sidebar-theme-count: 3`}>
+          <div class="sidebar__theme-indicator" aria-hidden="true"></div>
+          <button type="button" class="sidebar__theme-btn" data-theme-option="light" role="radio" aria-checked="false" aria-label="Light">&#9728;</button>
+          <button type="button" class="sidebar__theme-btn" data-theme-option="dark" role="radio" aria-checked="false" aria-label="Dark">&#9790;</button>
+          <button type="button" class="sidebar__theme-btn" data-theme-option="system" role="radio" aria-checked="false" aria-label="System">&#9682;</button>
+        </div>
+      </div>
+      <hr class="sidebar__menu-divider" />
+      <a class="sidebar__menu-item" href="#" role="menuitem">Settings</a>
+      <a class="sidebar__menu-item" href="#" role="menuitem">Report a bug</a>
+      <a class="sidebar__menu-item sidebar__menu-item--danger" href="#" role="menuitem">Log out</a>
+    </div>
+  </div>
+</aside>
+
+<style>
+  .sidebar {
+    position: fixed;
+    top: var(--titlebar-h, 0px);
+    left: 0;
+    bottom: 0;
+    width: 200px;
+    display: flex;
+    flex-direction: column;
+    background: var(--cc-surface);
+    border-right: 1px solid var(--cc-border);
+    padding: 16px 10px;
+    z-index: 900;
+    transition:
+      transform 0.28s ease,
+      opacity 0.28s ease,
+      background 0.15s ease,
+      border-color 0.15s ease;
+  }
+
+  .sidebar__brand {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 6px 14px;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--cc-text);
+  }
+
+  .sidebar__brand-mark {
+    color: var(--cc-accent);
+    font-family: ui-monospace, "SF Mono", monospace;
+  }
+
+  .sidebar__nav {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .sidebar__item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 7px;
+    color: var(--cc-text-secondary);
+    text-decoration: none;
+    font-size: 13px;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+
+  .sidebar__item:hover {
+    background: var(--cc-hover-bg);
+    color: var(--cc-text);
+  }
+
+  .sidebar__item--active {
+    background: var(--cc-active-bg);
+    color: var(--cc-text);
+  }
+
+  .sidebar__item-icon {
+    font-size: 10px;
+    opacity: 0.7;
+    width: 12px;
+    text-align: center;
+  }
+
+  .sidebar__group {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    margin: 2px 0 12px 26px;
+  }
+
+  .sidebar__subitem {
+    padding: 5px 8px;
+    border-radius: 6px;
+    font-size: 12px;
+    color: var(--cc-text-muted);
+    text-decoration: none;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+
+  .sidebar__subitem:hover {
+    background: var(--cc-hover-bg);
+    color: var(--cc-text-secondary);
+  }
+
+  .sidebar__secondary {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-top: 12px;
+    margin-top: 12px;
+    border-top: 1px solid var(--cc-border);
+  }
+
+  .sidebar__account {
+    position: relative;
+    margin-top: auto;
+    padding-top: 12px;
+  }
+
+  .sidebar__account-trigger {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 6px;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--cc-text);
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+
+  .sidebar__account-trigger:hover {
+    background: var(--cc-hover-bg);
+  }
+
+  .sidebar__account-avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--cc-hover-bg);
+    color: var(--cc-text);
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .sidebar__account-name {
+    font-size: 12px;
+    flex: 1;
+    text-align: left;
+    color: var(--cc-text-secondary);
+  }
+
+  .sidebar__account-kebab {
+    opacity: 0.5;
+  }
+
+  /* Opens UPWARD: anchored to the bottom of the trigger, animates from below. */
+  .sidebar__account-menu {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: calc(100% + 6px);
+    transform-origin: bottom;
+    background: var(--cc-surface-2);
+    border: 1px solid var(--cc-border-strong);
+    border-radius: 10px;
+    padding: 6px;
+    box-shadow: 0 12px 32px var(--cc-shadow);
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+
+    opacity: 0;
+    visibility: hidden;
+    transform: scale(0.96) translateY(6px);
+    transition:
+      opacity 0.16s ease,
+      transform 0.16s ease,
+      visibility 0.16s;
+  }
+
+  .sidebar__account:hover .sidebar__account-menu,
+  .sidebar__account:focus-within .sidebar__account-menu {
+    opacity: 1;
+    visibility: visible;
+    transform: scale(1) translateY(0);
+  }
+
+  .sidebar__theme-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 7px 8px;
+    font-size: 13px;
+    color: var(--cc-text-secondary);
+  }
+
+  .sidebar__theme-switch {
+    position: relative;
+    display: flex;
+    gap: 2px;
+    background: var(--cc-hover-bg);
+    border-radius: 7px;
+    padding: 2px;
+  }
+
+  /* Sliding pill behind the active option; position driven by --sidebar-theme-index (set in JS). */
+  .sidebar__theme-indicator {
+    position: absolute;
+    top: 2px;
+    bottom: 2px;
+    left: 2px;
+    width: calc((100% - 4px) / var(--sidebar-theme-count, 3));
+    border-radius: 5px;
+    background: var(--cc-active-bg);
+    transform: translateX(calc(100% * var(--sidebar-theme-index, 0)));
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .sidebar__theme-btn {
+    position: relative;
+    z-index: 1;
+    width: 24px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: 5px;
+    background: transparent;
+    color: var(--cc-text-muted);
+    font-size: 12px;
+    cursor: pointer;
+    transition: color 0.15s ease;
+  }
+
+  .sidebar__theme-btn:hover {
+    color: var(--cc-text);
+  }
+
+  .sidebar__theme-btn[aria-checked="true"] {
+    color: var(--cc-text);
+  }
+
+  .sidebar__menu-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+    padding: 7px 8px;
+    border: 0;
+    background: transparent;
+    border-radius: 6px;
+    color: var(--cc-text-secondary);
+    font-size: 13px;
+    text-decoration: none;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .sidebar__menu-item:hover {
+    background: var(--cc-hover-bg);
+  }
+
+  .sidebar__menu-item--danger {
+    color: var(--cc-danger);
+  }
+
+  .sidebar__menu-divider {
+    border: 0;
+    border-top: 1px solid var(--cc-border);
+    margin: 4px 2px;
+  }
+
+  /* Mobile hamburger + overlay behavior */
+  .sidebar-toggle {
+    display: none;
+    position: fixed;
+    top: calc(var(--titlebar-h, 0px) + 10px);
+    right: 14px;
+    z-index: 1100;
+    width: 34px;
+    height: 34px;
+    border: 1px solid var(--cc-border-strong);
+    border-radius: 8px;
+    background: var(--cc-surface-2);
+    cursor: pointer;
+  }
+
+  .sidebar-toggle__icon,
+  .sidebar-toggle__icon::before,
+  .sidebar-toggle__icon::after {
+    content: "";
+    display: block;
+    width: 16px;
+    height: 1.5px;
+    background: var(--cc-text);
+    position: relative;
+    margin: 0 auto;
+  }
+
+  .sidebar-toggle__icon::before {
+    position: absolute;
+    top: -5px;
+  }
+
+  .sidebar-toggle__icon::after {
+    position: absolute;
+    top: 5px;
+  }
+
+  .sidebar-backdrop {
+    display: none;
+  }
+
+  @media (max-width: 900px) {
+    .sidebar-toggle {
+      display: block;
+    }
+
+    .sidebar {
+      top: 0;
+      width: 100%;
+      max-width: 420px;
+      padding-top: calc(var(--titlebar-h, 0px) + 16px);
+      transform: translateX(-100%);
+      opacity: 0;
+    }
+
+    html.sidebar-open .sidebar {
+      transform: translateX(0);
+      opacity: 1;
+    }
+
+    .sidebar-backdrop {
+      display: block;
+      position: fixed;
+      inset: 0;
+      background: var(--cc-backdrop);
+      z-index: 890;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.2s ease, visibility 0.2s;
+    }
+
+    html.sidebar-open .sidebar-backdrop {
+      opacity: 1;
+      visibility: visible;
+    }
+  }
+</style>
+
+<script is:inline>
+  (function () {
+    var toggle = document.getElementById("sidebarToggle");
+    var backdrop = document.getElementById("sidebarBackdrop");
+    var html = document.documentElement;
+
+    function setSidebarOpen(open) {
+      html.classList.toggle("sidebar-open", open);
+      if (toggle) toggle.setAttribute("aria-expanded", String(open));
+    }
+
+    if (toggle) {
+      toggle.addEventListener("click", function () {
+        setSidebarOpen(!html.classList.contains("sidebar-open"));
+      });
+    }
+    if (backdrop) {
+      backdrop.addEventListener("click", function () {
+        setSidebarOpen(false);
+      });
+    }
+
+    var accountToggle = document.getElementById("accountToggle");
+    var accountMenu = document.getElementById("accountMenu");
+    if (accountToggle && accountMenu) {
+      // Menu opens on hover/focus (CSS); this just keeps aria-expanded in sync.
+      var wrap = accountToggle.closest(".sidebar__account");
+      if (wrap) {
+        wrap.addEventListener("mouseenter", function () {
+          accountToggle.setAttribute("aria-expanded", "true");
+        });
+        wrap.addEventListener("mouseleave", function () {
+          accountToggle.setAttribute("aria-expanded", "false");
+        });
+      }
+    }
+
+    // Appearance switch: reflects the mode ThemeInit already applied, and
+    // calls window.__ccTheme.set() (defined in ThemeInit.astro) on click.
+    var themeButtons = Array.prototype.slice.call(
+      document.querySelectorAll("[data-theme-option]")
+    );
+    var themeSwitch = document.querySelector(".sidebar__theme-switch");
+    var themeOrder = themeButtons.map(function (btn) {
+      return btn.dataset.themeOption;
+    });
+
+    function syncThemeButtons() {
+      var mode = (window.__ccTheme && window.__ccTheme.get()) || "system";
+      var index = Math.max(themeOrder.indexOf(mode), 0);
+      themeButtons.forEach(function (btn) {
+        btn.setAttribute("aria-checked", String(btn.dataset.themeOption === mode));
+      });
+      if (themeSwitch) themeSwitch.style.setProperty("--sidebar-theme-index", String(index));
+    }
+
+    themeButtons.forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        if (window.__ccTheme) window.__ccTheme.set(btn.dataset.themeOption);
+        syncThemeButtons();
+      });
+    });
+
+    document.addEventListener("cc-theme-change", syncThemeButtons);
+    syncThemeButtons();
+
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape") {
+        setSidebarOpen(false);
+        if (document.activeElement) document.activeElement.blur();
+      }
+    });
+  })();
+</script>

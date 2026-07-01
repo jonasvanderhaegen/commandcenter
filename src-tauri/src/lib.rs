@@ -5,7 +5,11 @@
 //! sketched in docs/ARCHITECTURE.md but not wired. The process engine (PTY
 //! supervision) is the next layer, not built here.
 
+mod credentials;
+
+use credentials::CredentialStore;
 use serde::Serialize;
+use tauri::Manager;
 
 #[derive(Serialize)]
 pub struct Project {
@@ -38,6 +42,30 @@ fn list_processes(project_id: String) -> Vec<Process> {
         name: "zsh".into(),
         status: "idle".into(),
     }]
+}
+
+/// Provider tokens (Claude, Codex, ...) that CommandCenter can spawn sessions
+/// with. The token value itself never crosses the IPC boundary to the
+/// frontend -- only presence/absence does.
+#[tauri::command]
+fn save_credential(app: tauri::AppHandle, provider: String, token: String) -> Result<(), String> {
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    let store = CredentialStore::open(&dir).map_err(|e| e.to_string())?;
+    store.save(&provider, &token).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn has_credential(app: tauri::AppHandle, provider: String) -> Result<bool, String> {
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    let store = CredentialStore::open(&dir).map_err(|e| e.to_string())?;
+    store.has(&provider).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn delete_credential(app: tauri::AppHandle, provider: String) -> Result<(), String> {
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    let store = CredentialStore::open(&dir).map_err(|e| e.to_string())?;
+    store.delete(&provider).map_err(|e| e.to_string())
 }
 
 /// Round the macOS window's corners. The window is frameless + transparent, so
@@ -103,7 +131,13 @@ pub fn run() {
             }
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![list_projects, list_processes])
+        .invoke_handler(tauri::generate_handler![
+            list_projects,
+            list_processes,
+            save_credential,
+            has_credential,
+            delete_credential
+        ])
         .run(tauri::generate_context!())
         .expect("error while running CommandCenter");
 }

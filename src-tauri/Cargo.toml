@@ -19,6 +19,16 @@ serde_json = "1"
 cc-mcp = { path = "crates/cc-mcp" }
 tokio = { version = "1", features = ["rt-multi-thread"] }
 
+# Cross-platform OS secret storage for the credential root key: macOS Keychain,
+# Windows Credential Manager, Linux Secret Service -- one API, no hand-rolled
+# platform bindings.
+keyring = "3"
+aes-gcm = "0.10"
+rand = "0.8"
+zeroize = { version = "1", features = ["derive"] }
+base64 = "0.22"
+anyhow = "1"
+
 # macOS-only: round the frameless transparent window's corners via the native
 # content-view layer (see round_window_corners in lib.rs). objc2 crates are
 # already in the tree (Tauri uses them), so this adds no new versions.

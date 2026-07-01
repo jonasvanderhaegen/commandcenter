@@ -1,0 +1,65 @@
+---
+// Theme bootstrap. Must run blocking, in <head>, before first paint (no
+// flash of wrong theme -- https://timomeh.de/posts/...-no-flash). Reads the
+// stored mode ("light" | "dark" | "system") from localStorage, resolves it
+// against prefers-color-scheme when "system", and sets data-theme on <html>.
+// Exposes window.__ccTheme.set(mode) for UI controls, and re-resolves live
+// when the OS scheme changes while mode is "system". Also syncs the native
+// Tauri window theme (Windows + macOS) via getCurrentWindow().setTheme() so
+// non-web chrome (native menus/dialogs) matches.
+---
+
+<script is:inline>
+  (function () {
+    var STORAGE_KEY = "cc-theme";
+    var mql = window.matchMedia("(prefers-color-scheme: dark)");
+
+    function resolve(mode) {
+      return mode === "system" ? (mql.matches ? "dark" : "light") : mode;
+    }
+
+    function syncTauriTheme(effective) {
+      try {
+        var tauri = window.__TAURI__;
+        if (tauri && tauri.window && typeof tauri.window.getCurrentWindow === "function") {
+          tauri.window.getCurrentWindow().setTheme(effective);
+        }
+      } catch (e) {
+        /* not running in Tauri, or API unavailable -- ignore */
+      }
+    }
+
+    function apply(mode) {
+      var effective = resolve(mode);
+      document.documentElement.dataset.theme = effective;
+      document.documentElement.dataset.themeMode = mode;
+      syncTauriTheme(effective);
+      document.dispatchEvent(
+        new CustomEvent("cc-theme-change", { detail: { mode: mode, effective: effective } })
+      );
+    }
+
+    function set(mode) {
+      try {
+        localStorage.setItem(STORAGE_KEY, mode);
+      } catch (e) {}
+      apply(mode);
+    }
+
+    function currentMode() {
+      try {
+        return localStorage.getItem(STORAGE_KEY) || "system";
+      } catch (e) {
+        return "system";
+      }
+    }
+
+    apply(currentMode());
+
+    mql.addEventListener("change", function () {
+      if (currentMode() === "system") apply("system");
+    });
+
+    window.__ccTheme = { set: set, get: currentMode };
+  })();
+</script>

@@ -8,8 +8,19 @@ publish = false
 name = "cc-mcp"
 path = "src/main.rs"
 [dependencies]
-rmcp = { version = "1.5", features = ["transport-io", "transport-streamable-http-server", "server"] }
-tokio = { version = "1", features = ["rt-multi-thread", "macros", "io-std", "io-util", "sync", "net"] }
+rmcp = { version = "1.5", features = [
+  "transport-io",
+  "transport-streamable-http-server",
+  "server",
+] }
+tokio = { version = "1", features = [
+  "rt-multi-thread",
+  "macros",
+  "io-std",
+  "io-util",
+  "sync",
+  "net",
+] }
 axum = "0.7"
 schemars = "1"
 serde = { version = "1", features = ["derive"] }
