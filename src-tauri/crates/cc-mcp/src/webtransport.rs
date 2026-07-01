@@ -108,7 +108,7 @@ async fn handle_session(
         tokio::select! {
             line = lines.next_line() => {
                 let Ok(Some(text)) = line else { break };
-                subs.apply(&text);
+                subs.apply(&text, &bus);
             }
             event = events.recv() => {
                 let Ok(event) = event else { break };

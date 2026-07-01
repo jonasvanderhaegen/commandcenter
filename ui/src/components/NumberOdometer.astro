@@ -31,6 +31,19 @@
   </div>
 
   <p class="odometer-card__status" data-odometer-status>Waiting for the first update&hellip;</p>
+
+  <form class="odometer-card__form" data-odometer-form>
+    <input
+      class="odometer-card__input"
+      type="number"
+      name="value"
+      step="any"
+      placeholder="Enter a value"
+      aria-label="Value to broadcast on the odometer topic"
+      required
+    />
+    <button class="odometer-card__submit" type="submit">Send event</button>
+  </form>
 </div>
 
 <style>
@@ -69,6 +82,43 @@
     font-size: 13px;
     color: var(--cc-text-muted);
     font-variant-numeric: tabular-nums;
+  }
+
+  .odometer-card__form {
+    display: flex;
+    gap: 8px;
+  }
+
+  .odometer-card__input {
+    flex: 1;
+    min-width: 0;
+    padding: 8px 10px;
+    font-size: 15px;
+    color: var(--cc-text);
+    background: var(--cc-surface-2);
+    border: 1px solid var(--cc-border-strong);
+    border-radius: 8px;
+  }
+
+  .odometer-card__input:focus-visible {
+    outline: none;
+    border-color: var(--cc-accent);
+  }
+
+  .odometer-card__submit {
+    padding: 8px 14px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--cc-bg);
+    background: var(--cc-accent);
+    border: 0;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: opacity 0.15s ease;
+  }
+
+  .odometer-card__submit:hover {
+    opacity: 0.85;
   }
 
   /* The digit columns/strips are built in JS, so they never carry Astro's
@@ -185,6 +235,7 @@
   (function () {
     type CcEvents = {
       subscribe: (topic: string, fn: (data: unknown, topic: string) => void) => () => void;
+      publish: (topic: string, data: unknown) => void;
       status: () => { ws: string; webtransport: string };
     };
 
@@ -197,16 +248,41 @@
       return "";
     }
 
+    // Wire the "submit a value" form: publish an odometer event onto the bus.
+    // The server rebroadcasts it to every subscriber (including us), and the
+    // subscription below is what actually rolls the digits -- the form never
+    // touches the odometer directly. Guarded per-element since the card's DOM
+    // is replaced on navigation.
+    function wireForm(bus: CcEvents) {
+      const form = document.querySelector<HTMLFormElement>("[data-odometer-form]");
+      if (!form || form.dataset.wired === "true") return;
+      form.dataset.wired = "true";
+      form.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const input = form.querySelector<HTMLInputElement>("input[name=value]");
+        if (!input || input.value === "") return;
+        const n = Number(input.value);
+        if (Number.isNaN(n)) return;
+        bus.publish("odometer", { value: n });
+      });
+    }
+
     function enter() {
       const root = document.getElementById("cc-odometer");
-      if (!root || unsubscribe) return;
+      if (!root) return;
       const bus = (window as unknown as { __ccEvents?: CcEvents }).__ccEvents;
       // EventBusInit's module script may not have run yet on the very first
-      // paint; retry shortly. The `unsubscribe` guard prevents a double-sub.
+      // paint; retry shortly.
       if (!bus) {
         setTimeout(enter, 100);
         return;
       }
+
+      wireForm(bus);
+
+      // The `unsubscribe` guard keeps the immediate call and the first
+      // page-load from double-subscribing the odometer.
+      if (unsubscribe) return;
 
       const od = createOdometer(root);
       od.set(Number(root.dataset.value) || 0);

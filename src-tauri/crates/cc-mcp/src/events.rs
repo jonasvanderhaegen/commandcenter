@@ -24,8 +24,18 @@ pub struct Event {
 #[derive(Debug, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum ClientMessage {
-    Subscribe { topic: String },
-    Unsubscribe { topic: String },
+    Subscribe {
+        topic: String,
+    },
+    Unsubscribe {
+        topic: String,
+    },
+    /// Publish an event to a topic, letting a browser client drive the bus
+    /// (e.g. the landing-page odometer form) instead of only the server.
+    Publish {
+        topic: String,
+        data: serde_json::Value,
+    },
 }
 
 #[derive(Clone)]
@@ -63,7 +73,7 @@ impl EventBus {
 pub struct Subscriptions(HashSet<String>);
 
 impl Subscriptions {
-    pub fn apply(&mut self, raw: &str) -> bool {
+    pub fn apply(&mut self, raw: &str, bus: &EventBus) -> bool {
         let Ok(msg) = serde_json::from_str::<ClientMessage>(raw) else {
             return false;
         };
@@ -73,6 +83,9 @@ impl Subscriptions {
             }
             ClientMessage::Unsubscribe { topic } => {
                 self.0.remove(&topic);
+            }
+            ClientMessage::Publish { topic, data } => {
+                bus.publish(topic, data);
             }
         }
         true
@@ -92,7 +105,7 @@ mod tests {
         let bus = EventBus::default();
         let mut rx = bus.subscribe();
         let mut subs = Subscriptions::default();
-        assert!(subs.apply(r#"{"type":"subscribe","topic":"a"}"#));
+        assert!(subs.apply(r#"{"type":"subscribe","topic":"a"}"#, &bus));
 
         bus.publish("a", serde_json::json!({"n": 1}));
         bus.publish("b", serde_json::json!({"n": 2}));
@@ -107,14 +120,30 @@ mod tests {
         }
         assert_eq!(seen, vec![1, 3]);
 
-        assert!(subs.apply(r#"{"type":"unsubscribe","topic":"a"}"#));
+        assert!(subs.apply(r#"{"type":"unsubscribe","topic":"a"}"#, &bus));
         assert!(!subs.contains("a"));
     }
 
     #[test]
     fn malformed_message_is_rejected() {
+        let bus = EventBus::default();
         let mut subs = Subscriptions::default();
-        assert!(!subs.apply("not json"));
-        assert!(!subs.apply(r#"{"type":"nonsense"}"#));
+        assert!(!subs.apply("not json", &bus));
+        assert!(!subs.apply(r#"{"type":"nonsense"}"#, &bus));
+    }
+
+    #[tokio::test]
+    async fn client_publish_reaches_subscribers() {
+        let bus = EventBus::default();
+        let mut rx = bus.subscribe();
+        let mut subs = Subscriptions::default();
+        assert!(subs.apply(r#"{"type":"subscribe","topic":"odometer"}"#, &bus));
+        assert!(subs.apply(
+            r#"{"type":"publish","topic":"odometer","data":{"value":5}}"#,
+            &bus
+        ));
+        let event = rx.recv().await.unwrap();
+        assert_eq!(event.topic, "odometer");
+        assert_eq!(event.data["value"], serde_json::json!(5));
     }
 }

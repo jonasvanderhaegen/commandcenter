@@ -3,6 +3,7 @@
 interface CcEventsApi {
   subscribe(topic: string, fn: (data: unknown, topic: string) => void): () => void;
   unsubscribe(topic: string, fn: (data: unknown, topic: string) => void): void;
+  publish(topic: string, data: unknown): void;
   status(): { ws: string; webtransport: string };
 }
 

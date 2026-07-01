@@ -28,6 +28,9 @@
     type Handler = (data: unknown, topic: string) => void;
     const handlers: Record<string, Set<Handler>> = {};
     let wsSubscribedTopics: Record<string, true> = {}; // mirrors what the WS connection has told the server
+    // Set when a WebTransport session is live so publish() can prefer it; reset
+    // to null on close so publish() falls back to the WebSocket.
+    let wtSend: ((obj: unknown) => void) | null = null;
 
     function dispatch(topic: string, data: unknown) {
       const set = handlers[topic];
@@ -73,6 +76,16 @@
       if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify(obj));
       }
+    }
+
+    // Publish an event onto the bus from the client. Prefers WebTransport when
+    // a session is live (the transport the odometer form targets), else the
+    // WebSocket. The server rebroadcasts to every subscriber -- including this
+    // client -- and that round-trip is what moves the odometer.
+    function publish(topic: string, data: unknown) {
+      const msg = { type: "publish", topic, data };
+      if (wtSend) wtSend(msg);
+      else wsSend(msg);
     }
 
     function syncWsSubscription(topic: string) {
@@ -168,6 +181,7 @@
         const stream = await wt.createBidirectionalStream();
         const writer = stream.writable.getWriter();
         const encoder = new TextEncoder();
+        wtSend = (obj) => writer.write(encoder.encode(JSON.stringify(obj) + "\n"));
 
         let wtSubscribedTopics: Record<string, true> = {};
         function syncWtSubscription(topic: string) {
@@ -211,10 +225,12 @@
         }
         $webtransportStatus.set("closed");
         $webtransportClient.set(null);
+        wtSend = null;
       } catch (e) {
         console.warn("[cc-events] WebTransport unavailable:", e);
         $webtransportStatus.set("closed");
         $webtransportClient.set(null);
+        wtSend = null;
       }
     }
 
@@ -245,6 +261,7 @@
     window.__ccEvents = {
       subscribe,
       unsubscribe: unsubscribeHandler,
+      publish,
       status: () => ({ ws: $wsStatus.get(), webtransport: $webtransportStatus.get() }),
     };
   }

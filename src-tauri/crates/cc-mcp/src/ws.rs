@@ -37,7 +37,7 @@ async fn handle_socket(socket: WebSocket, bus: EventBus) {
             inbound = receiver.next() => {
                 let Some(Ok(message)) = inbound else { break };
                 let Message::Text(text) = message else { continue };
-                subs.apply(&text);
+                subs.apply(&text, &bus);
             }
             event = events.recv() => {
                 let Ok(event) = event else { break };
