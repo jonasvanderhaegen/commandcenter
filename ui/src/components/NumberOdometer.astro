@@ -134,32 +134,28 @@
     color: var(--cc-text);
   }
 
+  /* Osmo "Number Odometer" model: each digit is a mask that clips to one line
+     over a roller -- a single text node of 0-9 repeated (stacked by line
+     height). Rolling = translateY the roller. Built in JS, so reached with
+     :global() under the template-scoped root. */
   .odometer :global(.odometer__col) {
-    position: relative;
+    display: inline-block;
+    overflow: clip;
     height: 1em;
-    overflow: hidden;
+    /* breathing room so glyph antialiasing isn't clipped at the 1em edges */
+    padding: 0.06em;
+    margin: -0.06em;
   }
 
   .odometer :global(.odometer__strip) {
-    display: flex;
-    flex-direction: column;
-    /* Same "osmo" ease the sidebar/nav use elsewhere in this app. */
-    transition: transform 0.85s cubic-bezier(0.625, 0.05, 0, 1);
-    will-change: transform;
+    display: block;
+    white-space: pre;
+    text-align: center;
+    line-height: 1;
   }
 
-  .odometer :global(.odometer__digit),
   .odometer :global(.odometer__static) {
-    height: 1em;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .odometer :global(.odometer__strip) {
-      transition: none;
-    }
+    display: inline-block;
   }
 </style>
 
@@ -168,65 +164,80 @@
   // (like EventBusInit), so the astro:page-load / astro:before-swap listeners
   // below are registered exactly once. enter()'s own guard keeps the immediate
   // call and the first page-load from double-subscribing.
+  // Osmo Number Odometer, adapted to vanilla + the Web Animations API (no GSAP)
+  // and driven by the event bus instead of scroll. The roll always starts from
+  // the CURRENTLY displayed value: each digit's roller is seeded at the current
+  // digit and animated forward to the target. Rollers repeat 0-9 twice so a
+  // decrease still rolls forward (wrapping through the second cycle) instead of
+  // reversing or snapping.
   function createOdometer(root: HTMLElement) {
-    let signature = "";
-    let strips: (HTMLElement | null)[] = [];
+    const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const CYCLES = 2;
+    const DURATION = 900;
+    const EASE = "cubic-bezier(0.16, 1, 0.3, 1)"; // ~power3.out
+    const DIGIT_STAGGER = 55; // ms between digits, rolling right-to-left
+    let current = ""; // last displayed string; "" until the first render
 
-    // 'layout' = digit positions collapsed to '#', literals kept, so we only
-    // rebuild the DOM when the shape changes (e.g. 9 -> 10), not on every tick.
-    const layoutOf = (s: string) =>
-      s.replace(/[0-9]/g, "#");
+    const isDigit = (ch: string) => ch >= "0" && ch <= "9";
 
-    function build(str: string) {
+    function set(value: number) {
+      const num = Number(value);
+      if (!Number.isFinite(num)) return;
+      const target = String(num);
+      if (target === current) return;
+      const animate = current !== "" && !reduce;
+
+      // Seed each column from the digits currently shown, padded to the new
+      // digit count so freshly grown columns still have a start to roll from.
+      const startValue = parseInt([...current].filter(isDigit).join(""), 10) || 0;
+      const digitSlots = [...target].filter(isDigit).length;
+      const paddedStart = String(Math.abs(startValue))
+        .padStart(digitSlots, "0")
+        .slice(-digitSlots);
+
       root.textContent = "";
-      strips = [];
-      for (const ch of str) {
-        if (ch >= "0" && ch <= "9") {
-          const col = document.createElement("span");
-          col.className = "odometer__col";
-          const strip = document.createElement("span");
-          strip.className = "odometer__strip";
-          for (let d = 0; d <= 9; d++) {
-            const digit = document.createElement("span");
-            digit.className = "odometer__digit";
-            digit.textContent = String(d);
-            strip.appendChild(digit);
-          }
-          col.appendChild(strip);
-          root.appendChild(col);
-          strips.push(strip);
-        } else {
+      const rollers: { roller: HTMLElement; from: number; to: number }[] = [];
+      let di = 0;
+      for (const ch of target) {
+        if (!isDigit(ch)) {
           const stat = document.createElement("span");
           stat.className = "odometer__static";
           stat.textContent = ch;
           root.appendChild(stat);
-          strips.push(null);
+          continue;
         }
-      }
-      signature = layoutOf(str);
-    }
+        const mask = document.createElement("span");
+        mask.className = "odometer__col";
+        const roller = document.createElement("span");
+        roller.className = "odometer__strip";
+        const cells: number[] = [];
+        for (let c = 0; c < CYCLES; c++) for (let d = 0; d <= 9; d++) cells.push(d);
+        roller.textContent = cells.join("\n");
+        mask.appendChild(roller);
+        root.appendChild(mask);
 
-    function applyDigits(str: string) {
-      let i = 0;
-      for (const ch of str) {
-        const strip = strips[i];
-        if (strip && ch >= "0" && ch <= "9") {
-          strip.style.transform = `translateY(-${Number(ch)}em)`;
-        }
-        i++;
+        const startDigit = Number(paddedStart[di]);
+        const endDigit = Number(ch);
+        // Always roll forward: if the target isn't strictly higher, wrap into
+        // the second 0-9 cycle so it rolls down through the wrap, not backward.
+        const to = endDigit > startDigit ? endDigit : 10 + endDigit;
+        rollers.push({ roller, from: startDigit, to });
+        di++;
       }
-    }
 
-    function set(value: number) {
-      const str = String(value);
-      const rebuilt = layoutOf(str) !== signature;
-      if (rebuilt) build(str);
-      // On a rebuild the strips start at digit 0; wait one frame before moving
-      // them so the transition actually animates from 0 to the target.
-      if (rebuilt) requestAnimationFrame(() => applyDigits(str));
-      else applyDigits(str);
-      root.dataset.value = str;
-      root.setAttribute("aria-label", str);
+      rollers.forEach(({ roller, from, to }, idx) => {
+        roller.style.transform = `translateY(-${animate ? to : to % 10}em)`;
+        if (!animate || from === to) return;
+        const delay = (rollers.length - 1 - idx) * DIGIT_STAGGER;
+        roller.animate(
+          [{ transform: `translateY(-${from}em)` }, { transform: `translateY(-${to}em)` }],
+          { duration: DURATION, easing: EASE, delay, fill: "backwards" },
+        );
+      });
+
+      current = target;
+      root.dataset.value = target;
+      root.setAttribute("aria-label", target);
     }
 
     return { set };
