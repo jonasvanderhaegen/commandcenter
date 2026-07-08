@@ -71,7 +71,7 @@ jobs:
             exit 1
           fi
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version-file: .node-version
 
@@ -95,7 +95,7 @@ jobs:
       # Builds the Tauri app — runs beforeBuildCommand (astro build) for the
       # frontend, compiles the Rust binary, bundles .app/.dmg, and attaches them
       # to a draft GitHub Release. Add APPLE_* signing secrets to notarize.
-      - uses: tauri-apps/tauri-action@v0
+      - uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
