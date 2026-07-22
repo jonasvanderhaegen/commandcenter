@@ -44,13 +44,13 @@ jobs:
       run:
         working-directory: ui
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .node-version
       - run: npm ci
       - run: npm run build
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: frontend-dist
           path: ui/dist
@@ -68,7 +68,7 @@ jobs:
         working-directory: src-tauri
     steps:
       - run: echo "$HOME/.cargo/bin" >> "$GITHUB_PATH" # self-hosted: use preinstalled rustup
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: cargo fmt --all --check
 
   clippy:
@@ -89,14 +89,14 @@ jobs:
       AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
     steps:
       - run: echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { clean: "false" }
       - name: Disk guard (cargo clean if < 20 GB free)
         run: |
           free_kb=$(df -k . | tail -1 | awk '{print $4}')
           if [ "$free_kb" -lt 20000000 ]; then echo "Below 20 GB free — cargo clean"; cargo clean; fi
           df -h .
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with: { name: frontend-dist, path: ui/dist }
       - name: Enable sccache if R2 cache reachable (else build uncached)
         shell: bash
@@ -133,8 +133,8 @@ jobs:
       run:
         working-directory: src-tauri
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - uses: taiki-e/install-action@9bcaee1dcae34154180f412e2fa69355a7cda9f6 # v2.82.6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: taiki-e/install-action@c44f6b046f1c29ae5918b1e0bfdbb2f1813836fd # v2.84.1
         with: { tool: cargo-deny }
       - run: cargo deny check
 
@@ -147,8 +147,8 @@ jobs:
       run:
         working-directory: src-tauri
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - uses: taiki-e/install-action@9bcaee1dcae34154180f412e2fa69355a7cda9f6 # v2.82.6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: taiki-e/install-action@c44f6b046f1c29ae5918b1e0bfdbb2f1813836fd # v2.84.1
         with: { tool: cargo-audit }
       - run: cargo audit
 
@@ -171,14 +171,14 @@ jobs:
       AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
     steps:
       - run: echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { clean: "false" }
       - name: Disk guard (cargo clean if < 20 GB free)
         run: |
           free_kb=$(df -k . | tail -1 | awk '{print $4}')
           if [ "$free_kb" -lt 20000000 ]; then echo "Below 20 GB free — cargo clean"; cargo clean; fi
           df -h .
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with: { name: frontend-dist, path: ui/dist }
       - name: Enable sccache if R2 cache reachable (else build uncached)
         shell: bash
